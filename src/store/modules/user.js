@@ -27,12 +27,28 @@ const mutations = {
   }
 }
 
+// const actions = {
+//   // user login
+//   login({ commit }, userInfo) {
+//     const { username, password } = userInfo
+//     return new Promise((resolve, reject) => {
+//       login({ username: username.trim(), password: password }).then(response => {
+//         const { data } = response
+//         commit('SET_TOKEN', data.token)
+//         setToken(data.token)
+//         resolve()
+//       }).catch(error => {
+//         reject(error)
+//       })
+//     })
+//   },
 const actions = {
   // user login
+  // 将原来的解构赋值改为传递整个 userInfo
   login({ commit }, userInfo) {
-    const { username, password } = userInfo
+    // 移除解构，直接使用 userInfo
     return new Promise((resolve, reject) => {
-      login({ username: username.trim(), password: password }).then(response => {
+      login(userInfo).then(response => { // 直接传递整个 userInfo
         const { data } = response
         commit('SET_TOKEN', data.token)
         setToken(data.token)
@@ -42,6 +58,8 @@ const actions = {
       })
     })
   },
+
+
 
   // get user info
   getInfo({ commit, state }) {
