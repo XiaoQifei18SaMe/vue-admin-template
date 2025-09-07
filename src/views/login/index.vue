@@ -47,7 +47,8 @@
           <svg-icon icon-class="role" /> <!-- 可自行添加角色图标 -->
         </span>
         <el-select v-model="loginForm.role" placeholder="请选择角色">
-          <el-option label="管理员" value="admin" />
+          <el-option label="超级管理员" value="super_admin" /> 
+          <el-option label="校区管理员" value="campus_admin" /> 
           <el-option label="学生" value="student" />
           <el-option label="教练" value="coach" />
         </el-select>
@@ -164,22 +165,57 @@ export default {
         this.$refs.password.focus()
       })
     },
+    // handleLogin() {
+    //   this.$refs.loginForm.validate(valid => {
+    //     if (valid) {
+    //       this.loading = true
+    //       this.$store.dispatch('user/login', this.loginForm).then(() => {
+    //         this.$router.push({ path: this.redirect || '/' })
+    //         this.loading = false
+    //       }).catch(() => {
+    //         this.loading = false
+    //       })
+    //     } else {
+    //       console.log('error submit!!')
+    //       return false
+    //     }
+    //   })
+    // },
     handleLogin() {
-      this.$refs.loginForm.validate(valid => {
+      this.$refs.loginForm.validate(async (valid) => {
         if (valid) {
-          this.loading = true
-          this.$store.dispatch('user/login', this.loginForm).then(() => {
+          this.loading = true // 保留原有loading状态
+          try {
+            // 1. 原有登录逻辑：获取token
+            await this.$store.dispatch('user/login', this.loginForm)
+            
+            // 2. 新增：获取用户信息（含roles）
+            const userInfo = await this.$store.dispatch('user/getInfo')
+            
+            // 3. 新增：生成权限路由
+            const accessedRoutes = await this.$store.dispatch('permission/generateRoutes', userInfo.roles)
+            
+            // 4. 新增：动态添加路由
+            this.$router.addRoutes(accessedRoutes)
+            
+            // 5. 原有跳转逻辑（保留redirect参数）
             this.$router.push({ path: this.redirect || '/' })
+          } catch (error) {
+            // 保留原有错误处理
+            console.error('登录失败', error)
+          } finally {
+            // 无论成功失败，都关闭loading（保留原有逻辑）
             this.loading = false
-          }).catch(() => {
-            this.loading = false
-          })
+          }
         } else {
+          // 保留原有表单验证失败逻辑
           console.log('error submit!!')
           return false
         }
       })
-    },
+  },
+    
+    
     // 新增：跳转到注册页面的方法
     handleToRegister() {
        console.log("触发注册跳转"); // 新增日志，查看控制台是否输出
