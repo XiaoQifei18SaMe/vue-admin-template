@@ -62,3 +62,33 @@ router.afterEach(() => {
   // finish progress bar
   NProgress.done()
 })
+
+// 过滤路由：只保留当前用户角色有权访问的路由
+function filterAsyncRoutes(routes, roles) {
+  const res = []
+  routes.forEach(route => {
+    const tmp = { ...route }
+    // 1. 路由无roles限制，直接放行
+    if (!tmp.meta || !tmp.meta.roles) {
+      res.push(tmp)
+    } 
+    // 2. 路由有roles限制，检查当前用户角色是否包含在内
+    else if (roles.some(role => tmp.meta.roles.includes(role))) {
+      // 递归过滤子路由
+      if (tmp.children) {
+        tmp.children = filterAsyncRoutes(tmp.children, roles)
+      }
+      res.push(tmp)
+    }
+  })
+  return res
+}
+
+// @/utils/permission.js
+export function isSuperAdmin(roles) {
+  return roles && roles.includes('admin')
+}
+
+export function isCampusAdmin(roles) {
+  return roles && roles.includes('campus_admin')
+}
