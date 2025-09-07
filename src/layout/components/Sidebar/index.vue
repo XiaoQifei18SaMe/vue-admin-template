@@ -30,8 +30,11 @@ export default {
     ...mapGetters([
       'sidebar'
     ]),
+    // routes() {
+    //   return this.$router.options.routes
+    // },
     routes() {
-      return this.$router.options.routes
+      return this.$store.getters['permission/routes']
     },
     activeMenu() {
       const route = this.$route
