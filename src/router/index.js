@@ -57,6 +57,7 @@ export const constantRoutes = [
 
   {
     path: '/',
+    redirect: '/dashboard',
     component: Layout,
     children: [{
       path: 'dashboard',
@@ -175,6 +176,47 @@ export const constantRoutes = [
   { path: '*', redirect: '/404', hidden: true }
 ]
 
+// 权限路由（需按角色过滤）
+export const asyncRoutes = [
+  // 1. 超级管理员专属：校区管理
+  {
+    path: '/campus',
+    component: Layout,
+    name: 'CampusManagement',
+    meta: { 
+      title: '校区管理', 
+      icon: 'location',
+      roles: ['super_admin'] // 仅超级管理员可见
+    },
+    children: [
+      { path: 'list', component: () => import('@/views/campus/list'), meta: { title: '校区列表' } },
+      { path: 'create', component: () => import('@/views/campus/create'), meta: { title: '创建校区' } },
+      { path: 'edit/:id', component: () => import('@/views/campus/edit'), meta: { title: '编辑校区' } }
+    ]
+  },
+  // 2. 管理员通用：个人信息管理
+  {
+    path: '/admin',
+    component: Layout,
+    name: 'AdminManagement',
+    meta: { 
+      title: '管理员中心', 
+      icon: 'user',
+      roles: ['admin', 'campus_admin'] // 超级管理员和校区管理员可见
+    },
+    children: [
+      { path: 'profile', component: () => import('@/views/admin/profile'), meta: { title: '个人信息' } },
+      { 
+        path: 'list', 
+        component: () => import('@/views/admin/list'), 
+        meta: { 
+          title: '管理员列表',
+          roles: ['admin'] // 仅超级管理员可见
+        } 
+      }
+    ]
+  }
+]
 const createRouter = () => new Router({
   // mode: 'history', // require service support
   scrollBehavior: () => ({ y: 0 }),
