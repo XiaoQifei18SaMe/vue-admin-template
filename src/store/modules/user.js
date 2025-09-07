@@ -6,7 +6,8 @@ const getDefaultState = () => {
   return {
     token: getToken(),
     name: '',
-    avatar: ''
+    avatar: '',
+    roles: [] // 1. 新增：存储用户角色（关键！用于权限判断）
   }
 }
 
@@ -24,6 +25,10 @@ const mutations = {
   },
   SET_AVATAR: (state, avatar) => {
     state.avatar = avatar
+  },
+  // 2. 新增：设置用户角色的mutation
+  SET_ROLES: (state, roles) => {
+    state.roles = roles
   }
 }
 
@@ -61,7 +66,27 @@ const actions = {
 
 
 
-  // get user info
+  // // get user info
+  // getInfo({ commit, state }) {
+  //   return new Promise((resolve, reject) => {
+  //     getInfo(state.token).then(response => {
+  //       const { data } = response
+
+  //       if (!data) {
+  //         return reject('Verification failed, please Login again.')
+  //       }
+
+  //       const { name, avatar } = data
+
+  //       commit('SET_NAME', name)
+  //       commit('SET_AVATAR', avatar)
+  //       resolve(data)
+  //     }).catch(error => {
+  //       reject(error)
+  //     })
+  //   })
+  // },
+  // get user info（核心修改：获取并存储角色信息）
   getInfo({ commit, state }) {
     return new Promise((resolve, reject) => {
       getInfo(state.token).then(response => {
@@ -71,10 +96,15 @@ const actions = {
           return reject('Verification failed, please Login again.')
         }
 
-        const { name, avatar } = data
-
+        // 3. 从接口返回数据中提取角色信息（关键！）
+        const { name, avatar, roles } = data
+        
+        // 4. 存储角色信息（用于permission.js过滤路由）
+        commit('SET_ROLES', roles)
         commit('SET_NAME', name)
         commit('SET_AVATAR', avatar)
+        
+        // 5. 将完整用户信息返回（供登录后调用generateRoutes使用）
         resolve(data)
       }).catch(error => {
         reject(error)
