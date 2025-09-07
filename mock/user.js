@@ -25,14 +25,28 @@ const tokens = {
 
 // 1. 系统默认用户（初始数据）
 const defaultUsers  = {
-  'admin': {
-    password: 'aaaa1111@',
-    role: 'admin',
-    token: 'admin-token',
+  // 1. 新增超级管理员
+  'super_admin': {
+    password: 'super123@',
+    role: 'super_admin', // 角色标识
+    token: 'super-admin-token',
     info: {
-      roles: ['admin'],
-      name: '管理员',
-      avatar: 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif'
+      roles: ['super_admin'],
+      name: '超级管理员',
+      avatar: 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif',
+      // 超级管理员无校区限制，无需campus字段
+    }
+  },
+  // 2. 新增校区管理员（示例：东校区管理员）
+  'campus_admin': {
+    password: 'campus123@',
+    role: 'campus_admin', // 角色标识
+    token: 'campus-admin-east-token',
+    info: {
+      roles: ['campus_admin'],
+      name: '东校区管理员',
+      avatar: 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif',
+      campus: 'east' // 核心：关联所属校区（对应校区value）
     }
   },
   'student_wang': {
