@@ -22,3 +22,12 @@ export function logout() {
     method: 'post'
   })
 }
+
+// 添加注册接口
+export function register(data) {
+  return request({
+    url: '/vue-admin-template/user/register',
+    method: 'post',
+    data
+  })
+}

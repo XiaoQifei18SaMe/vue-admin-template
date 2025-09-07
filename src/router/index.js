@@ -38,6 +38,18 @@ export const constantRoutes = [
   },
 
   {
+    path: '/register',
+    component: () => import('@/views/register/index'),//注册页面
+    hidden: true
+  },
+
+  {
+    path: '/register/pending',
+    component: () => import('@/views/register/pending'), // 等待审核页面
+    hidden: true
+  },
+
+  {
     path: '/404',
     component: () => import('@/views/404'),
     hidden: true
@@ -46,7 +58,6 @@ export const constantRoutes = [
   {
     path: '/',
     component: Layout,
-    redirect: '/dashboard',
     children: [{
       path: 'dashboard',
       name: 'Dashboard',

@@ -3,7 +3,7 @@
     <el-form ref="loginForm" :model="loginForm" :rules="loginRules" class="login-form" auto-complete="on" label-position="left">
 
       <div class="title-container">
-        <h3 class="title">Login Form</h3>
+        <h3 class="title">乒乓球培训系统</h3>
       </div>
 
       <el-form-item prop="username">
@@ -13,7 +13,7 @@
         <el-input
           ref="username"
           v-model="loginForm.username"
-          placeholder="Username"
+          placeholder="用户名（4-16位），仅支持字母数字下划线"
           name="username"
           type="text"
           tabindex="1"
@@ -30,7 +30,7 @@
           ref="password"
           v-model="loginForm.password"
           :type="passwordType"
-          placeholder="Password"
+          placeholder="密码（8-16位），必须包含字母数字及特殊字符"
           name="password"
           tabindex="2"
           auto-complete="on"
@@ -53,12 +53,15 @@
         </el-select>
       </el-form-item>
 
-      <el-button :loading="loading" type="primary" style="width:100%;margin-bottom:30px;" @click.native.prevent="handleLogin">Login</el-button>
+      <el-button :loading="loading" type="primary" style="width:100%;margin-bottom:30px;" @click.native.prevent="handleLogin">登录</el-button>
 
       <div class="tips">
         <span>用户1: admin / aaaa1111@ / 管理员</span><br>
         <span>用户2: student_wang / bbbb2222@ / 学生</span><br>
         <span>用户3: coach_K / cccc3333@ / 教练</span>
+         <span class="register-tip">没有账号？
+          <span class="register-link" @click="handleToRegister">点击注册</span>
+        </span>
       </div>
 
     </el-form>
@@ -66,7 +69,7 @@
 </template>
 
 <script>
-import { validUsername } from '@/utils/validate'
+import { validUsername , validPassword} from '@/utils/validate'
 
 export default {
   name: 'Login',
@@ -100,19 +103,20 @@ export default {
   //   }
   // },
   data() {
-      const validateUsername = (rule, value, callback) => {
-      if (!validUsername(value)) {
-        callback(new Error('Please enter the correct user name'))
+    const validateUsername = (rule, value, callback) => {
+      if(!value){
+        callback(new Error('请输入用户名'))
+      }else if (!validUsername(value)) {
+        callback(new Error('用户名需4-16位，可以包含字母、数字和下划线'))
       } else {
         callback()
       }
     }
     // 密码验证：8-16位，包含字母、数字、特殊字符
     const validatePassword = (rule, value, callback) => {
-      const reg = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,16}$/
       if (!value) {
         callback(new Error('请输入密码'))
-      } else if (!reg.test(value)) {
+      } else if (!validPassword(value)) {
         callback(new Error('密码需8-16位，包含字母、数字和特殊字符'))
       } else {
         callback()
@@ -123,7 +127,7 @@ export default {
       loginForm: {
         username: 'admin',
         password: 'aaaa1111@',
-        role: '' // 新增角色字段
+        role: 'admin' // 新增角色字段
       },
       loginRules: {
         username: [
@@ -175,6 +179,14 @@ export default {
           return false
         }
       })
+    },
+    // 新增：跳转到注册页面的方法
+    handleToRegister() {
+       console.log("触发注册跳转"); // 新增日志，查看控制台是否输出
+    // 路由跳转前先清空可能的表单状态（避免残留状态影响）
+    this.$refs.loginForm && this.$refs.loginForm.resetFields();
+    // 路由跳转（你的路由配置正确，直接用即可）
+    this.$router.push("/register");
     }
   }
 }
@@ -244,6 +256,7 @@ $cursor: #fff;
 $bg:#2d3a4b;
 $dark_gray:#889aa4;
 $light_gray:#eee;
+$primary-color: #409EFF; // 复用element-ui主题色，保持风格统一
 
 .login-container {
   min-height: 100%;
@@ -260,14 +273,43 @@ $light_gray:#eee;
     overflow: hidden;
   }
 
-  .tips {
+  // .tips {
+  //   font-size: 14px;
+  //   color: #fff;
+  //   margin-bottom: 10px;
+
+  //   span {
+  //     &:first-of-type {
+  //       margin-right: 16px;
+  //     }
+  //   }
+  // }
+   .tips {
     font-size: 14px;
     color: #fff;
     margin-bottom: 10px;
+    line-height: 1.8; // 增加行高，避免文字拥挤
 
     span {
       &:first-of-type {
         margin-right: 16px;
+      }
+    }
+
+    // 新增：注册提示文字样式
+    .register-tip {
+      display: block; // 独占一行，提升可读性
+      margin-top: 8px;
+    }
+
+    // 新增：注册链接样式（hover效果+主题色）
+    .register-link {
+      color: $primary-color;
+      cursor: pointer;
+      margin-left: 4px;
+
+      &:hover {
+        text-decoration: underline; //  hover时下划线，增强交互提示
       }
     }
   }
