@@ -23,8 +23,8 @@ const tokens = {
 //   }
 // }
 
-// 存储用户信息（包含密码和角色）
-const users = {
+// 1. 系统默认用户（初始数据）
+const defaultUsers  = {
   'admin': {
     password: 'aaaa1111@',
     role: 'admin',
@@ -54,50 +54,113 @@ const users = {
       name: '教练K',
       avatar: 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif'
     }
-  }
+  },
 }
 
+// 2. 注册用户存储（模拟数据库表）
+const registeredUsers = {} // 独立对象，避免嵌套问题
+
 module.exports = [
-  // 登录接口修改：验证用户名、密码、角色
+  // 登录接口：必须同时查询默认用户和注册用户（核心修复点）
   {
     url: '/vue-admin-template/user/login',
     type: 'post',
     response: config => {
-      const { username, password, role } = config.body
-      const user = users[username]
+      const { username, password, role } = config.body;
 
-      // 验证逻辑
+      // 关键修复：先查默认用户，再查注册用户（覆盖所有用户来源）
+      const user = defaultUsers[username] || registeredUsers[username];
+
+      // 修复错误处理逻辑，避免返回500
       if (!user) {
-        return { code: 60204, message: '用户名不存在' }
+        return { code: 60204, message: '用户名不存在' }; // 明确错误码
       } else if (user.password !== password) {
-        return { code: 60204, message: '密码错误' }
+        return { code: 60204, message: '密码错误' };
       } else if (user.role !== role) {
-        return { code: 60204, message: '角色不匹配' }
+        return { code: 60204, message: '角色不匹配' };
       }
 
-      // 验证通过返回token
+      // 确保返回正确的token结构
       return {
         code: 20000,
-        data: { token: user.token }
-      }
+        data: { token: user.token } // 必须返回token，否则登录后无法获取用户信息
+      };
     }
   },
 
-  // 获取用户信息接口（根据token返回对应角色信息）
+  // 获取用户信息接口：修复token查询逻辑（避免500）
   {
     url: '/vue-admin-template/user/info\.*',
     type: 'get',
     response: config => {
-      const { token } = config.query
-      // 根据token反向查找用户信息
-      const userInfo = Object.values(users).find(u => u.token === token)?.info
-      
+      const { token } = config.query;
+
+      // 修复：同时从默认用户和注册用户中查询token对应的信息
+      let userInfo = null;
+      // 检查默认用户
+      Object.values(defaultUsers).forEach(user => {
+        if (user.token === token) {
+          userInfo = user.info;
+        }
+      });
+      // 检查注册用户
       if (!userInfo) {
-        return { code: 50008, message: '用户信息不存在' }
+        Object.values(registeredUsers).forEach(user => {
+          if (user.token === token) {
+            userInfo = user.info;
+          }
+        });
       }
-      return { code: 20000, data: userInfo }
+
+      // 明确错误处理，避免返回500
+      if (!userInfo) {
+        return { code: 50008, message: '登录已过期，请重新登录' };
+      }
+
+      return { code: 20000, data: userInfo };
     }
   },
+  // // 登录接口修改：验证用户名、密码、角色
+  // {
+  //   url: '/vue-admin-template/user/login',
+  //   type: 'post',
+  //   response: config => {
+  //     const { username, password, role } = config.body
+  //    // 先查默认用户，再查注册用户
+  //    const user = defaultUsers[username] || registeredUsers[username]
+
+  //     // 验证逻辑
+  //     if (!user) {
+  //       return { code: 60204, message: '用户名不存在' }
+  //     } else if (user.password !== password) {
+  //       return { code: 60204, message: '密码错误' }
+  //     } else if (user.role !== role) {
+  //       return { code: 60204, message: '角色不匹配' }
+  //     }
+
+  //     // 验证通过返回token
+  //     return {
+  //       code: 20000,
+  //       data: { token: user.token }
+  //     }
+  //   }
+  // },
+
+  // // 获取用户信息接口（根据token返回对应角色信息）
+  // {
+  //   url: '/vue-admin-template/user/info\.*',
+  //   type: 'get',
+  //   response: config => {
+  //     const { token } = config.query
+  //     // 根据token反向查找用户信息
+  //     const userInfo = Object.values(users).find(u => u.token === token)?.info
+      
+  //     if (!userInfo) {
+  //       return { code: 50008, message: '用户信息不存在' }
+  //     }
+  //     return { code: 20000, data: userInfo }
+  //   }
+  // },
 
 
   // user logout
@@ -110,7 +173,72 @@ module.exports = [
         data: 'success'
       }
     }
+  },
+
+  // 文件上传接口（必须添加）
+  {
+    url: '/vue-admin-template/user/upload',
+    type: 'post',
+    response: () => {
+      // 模拟返回上传成功的响应
+      return {
+        code: 20000,
+        message: '图片上传成功',
+        data: {
+          url: `https://picsum.photos/400/400?random=${Math.random()}`
+        }
+      }
+    }
+  },
+
+  // 新增：注册接口（核心缺失部分）
+  {
+    url: '/vue-admin-template/user/register',
+    type: 'post',
+    response: config => {
+      const { username, role, password } = config.body;
+
+      // 1. 模拟验证：用户名已存在
+      // 检查用户名是否已存在（默认用户或注册用户中）
+      if (defaultUsers[username] || registeredUsers[username]) {
+        return { code: 60204, message: '用户名已存在' }
+      }
+
+      // 2. 模拟注册成功：保存用户到模拟数据库
+
+      // 保存到注册用户表
+      registeredUsers[username] = {
+        username,
+        password,
+        role,
+        token: `${role}-${username}-token`,
+        info: {
+          roles: [role],
+          name: config.body.realName || username,
+          avatar: config.body.photo || 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif'
+        }
+      };
+      // users.registered_users[username] = {
+      //   username,
+      //   password,
+      //   role,
+      //   token: `${role}-${username}-token`, // 生成临时token
+      //   info: {
+      //     roles: [role],
+      //     name: config.body.realName || username,
+      //     avatar: config.body.photo || 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif'
+      //   }
+      // };
+
+      // 3. 返回注册成功响应
+      return {
+        code: 20000, // 成功码（与其他接口保持一致）
+        message: role === 'student' ? '注册成功' : '注册申请已提交',
+        data: { success: true }
+      };
+    }
   }
+
 ]
 
 // module.exports = [

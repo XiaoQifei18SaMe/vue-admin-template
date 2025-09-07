@@ -104,13 +104,13 @@ export default {
   // },
   data() {
     const validateUsername = (rule, value, callback) => {
-      if(!value){
-        callback(new Error('请输入用户名'))
-      }else if (!validUsername(value)) {
-        callback(new Error('用户名需4-16位，可以包含字母、数字和下划线'))
-      } else {
-        callback()
-      }
+        if(!value){
+          callback(new Error('请输入用户名'))
+        }else if (!validUsername(value)) {
+          callback(new Error('用户名需4-16位，可以包含字母、数字和下划线'))
+        } else {
+          callback()
+        }
     }
     // 密码验证：8-16位，包含字母、数字、特殊字符
     const validatePassword = (rule, value, callback) => {
@@ -246,7 +246,7 @@ $cursor: #fff;
     }
     
     .el-input__suffix {
-      right: -30px;
+      right: 0px;
     }
   }
 }
@@ -336,7 +336,7 @@ $primary-color: #409EFF; // 复用element-ui主题色，保持风格统一
 
   .show-pwd {
     position: absolute;
-    right: 10px;
+    right: 40px;
     top: 7px;
     font-size: 16px;
     color: $dark_gray;

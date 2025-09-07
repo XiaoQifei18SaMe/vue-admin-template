@@ -31,3 +31,14 @@ export function register(data) {
     data
   })
 }
+
+// 新增：文件上传接口（与登录接口风格一致）
+export function uploadFile(data) {
+  return request({
+    url: '/vue-admin-template/user/upload',
+    method: 'post',
+    data,
+    // 上传文件需要指定Content-Type为multipart/form-data
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+}
