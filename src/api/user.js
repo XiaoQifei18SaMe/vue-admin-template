@@ -1,11 +1,38 @@
 import request from '@/utils/request'
 
 export function login(data) {
-  return request({
-    url: '/vue-admin-template/user/login',
-    method: 'post',
-    data
-  })
+  switch (data.role) {
+    case 'super_admin':
+      return request({
+        url: '/super_admin/login',
+        method: 'post',
+        data
+      })
+    case 'campus_admin':
+      return request({
+        url: '/admin/login',
+        method: 'post',
+        data
+      })
+    case 'coach':
+      return request({
+        url: '/coach/login',
+        method: 'post',
+        data
+      })
+    case 'student':
+      return request({
+        url: '/student/login',
+        method: 'post',
+        data
+      })
+
+  }
+  // return request({
+  //   url: '/vue-admin-template/user/login',
+  //   method: 'post',
+  //   data
+  // })
 }
 
 export function getInfo(token) {
