@@ -109,9 +109,10 @@ const getAdminUsers = () => {
 module.exports = [
   // 登录接口：必须同时查询默认用户和注册用户（核心修复点）
   {
-    url: '/vue-admin-template/user/login',
+    url: '/super_admin/login',
     type: 'post',
     response: config => {
+      console.log('Mock 拦截到登录请求', config) // 新增日志验证
       const { username, password, role } = config.body;
 
       // 关键修复：先查默认用户，再查注册用户（覆盖所有用户来源）
