@@ -34,6 +34,8 @@ const defaultUsers  = {
       roles: ['super_admin'],
       name: '超级管理员',
       avatar: 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif',
+      phone: '13800138000',  // 添加电话
+      email: 'super@example.com'  // 添加邮箱
       // 超级管理员无校区限制，无需campus字段
     }
   },
@@ -46,7 +48,22 @@ const defaultUsers  = {
       roles: ['campus_admin'],
       name: '东校区管理员',
       avatar: 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif',
+      phone: '13900139000',  // 添加电话
+      email: 'east@example.com',  // 添加邮箱
       campus: 'east' // 核心：关联所属校区（对应校区value）
+    }
+  },
+  'campus_admin_west': {
+    password: 'campus123@',
+    role: 'campus_admin',
+    token: 'campus-admin-west-token',
+    info: {
+      roles: ['campus_admin'],
+      name: '西校区管理员',
+      avatar: 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif',
+      phone: '13700137000',
+      email: 'west@example.com',
+      campus: 'west'
     }
   },
   'student_wang': {
@@ -74,6 +91,21 @@ const defaultUsers  = {
 // 2. 注册用户存储（模拟数据库表）
 const registeredUsers = {} // 独立对象，避免嵌套问题
 
+// 辅助函数：获取所有管理员用户
+const getAdminUsers = () => {
+  // 从默认用户和注册用户中筛选出管理员角色
+  const allUsers = { ...defaultUsers, ...registeredUsers };
+  return Object.values(allUsers)
+    .filter(user => user.role === 'super_admin' || user.role === 'campus_admin')
+    .map(user => ({
+      id: user.token,  // 使用token作为唯一标识
+      realName: user.info.name,
+      phone: user.info.phone || '',
+      email: user.info.email || '',
+      role: user.role,
+      campus: user.info.campus || ''
+    }));
+}
 module.exports = [
   // 登录接口：必须同时查询默认用户和注册用户（核心修复点）
   {

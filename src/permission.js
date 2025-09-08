@@ -130,12 +130,5 @@ router.afterEach(() => {
 //   return res
 // }
 
-// // @/utils/permission.js
-// export function isSuperAdmin(roles) {
-//   return roles && roles.includes('admin')
-// }
 
-// export function isCampusAdmin(roles) {
-//   return roles && roles.includes('campus_admin')
-// }
 
