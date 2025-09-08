@@ -5,15 +5,18 @@ function filterAsyncRoutes(routes, roles) {
   const res = []
   routes.forEach(route => {
     const tmp = { ...route }
-    // 1. 检查当前路由是否有权限（meta.roles包含用户角色）
     if (hasPermission(roles, tmp)) {
-      // 2. 递归过滤子路由（如“校园管理”的子路由“校区列表”）
       if (tmp.children) {
         tmp.children = filterAsyncRoutes(tmp.children, roles)
+        // 若子路由过滤后为空，仍保留父路由（避免父路由消失）
+        if (tmp.children.length === 0) {
+          delete tmp.children // 防止空数组导致父路由不显示
+        }
       }
       res.push(tmp)
     }
   })
+  console.log('过滤后的完整路由结构:', res) // 确认父子层级是否完整
   return res
 }
 

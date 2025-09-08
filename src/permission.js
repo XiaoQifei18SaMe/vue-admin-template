@@ -10,19 +10,62 @@ NProgress.configure({ showSpinner: false }) // NProgress Configuration
 
 const whiteList = ['/login','/register','/register/pending'] // no redirect whitelist
 
+// router.beforeEach(async(to, from, next) => {
+//   // start progress bar
+//   NProgress.start()
+
+//   // set page title
+//   document.title = getPageTitle(to.meta.title)
+
+//   // determine whether the user has logged in
+//   const hasToken = getToken()
+
+//   if (hasToken) {
+//     if (to.path === '/login') {
+//       // if is logged in, redirect to the home page
+//       next({ path: '/' })
+//       NProgress.done()
+//     } else {
+//       const hasGetUserInfo = store.getters.name
+//       if (hasGetUserInfo) {
+//         next()
+//       } else {
+//         try {
+//           // get user info
+//           await store.dispatch('user/getInfo')
+
+//           next()
+//         } catch (error) {
+//           // remove token and go to login page to re-login
+//           await store.dispatch('user/resetToken')
+//           Message.error(error || 'Has Error')
+//           next(`/login?redirect=${to.path}`)
+//           NProgress.done()
+//         }
+//       }
+//     }
+//   } else {
+//     /* has no token*/
+
+//     if (whiteList.indexOf(to.path) !== -1) {
+//       // in the free login whitelist, go directly
+//       next()
+//     } else {
+//       // other pages that do not have permission to access are redirected to the login page.
+//       next(`/login?redirect=${to.path}`)
+//       NProgress.done()
+//     }
+//   }
+// })
+
+// 修改 vue-admin-template/src/permission.js 的 router.beforeEach 部分
 router.beforeEach(async(to, from, next) => {
-  // start progress bar
   NProgress.start()
-
-  // set page title
   document.title = getPageTitle(to.meta.title)
-
-  // determine whether the user has logged in
   const hasToken = getToken()
 
   if (hasToken) {
     if (to.path === '/login') {
-      // if is logged in, redirect to the home page
       next({ path: '/' })
       NProgress.done()
     } else {
@@ -31,12 +74,18 @@ router.beforeEach(async(to, from, next) => {
         next()
       } else {
         try {
-          // get user info
-          await store.dispatch('user/getInfo')
-
-          next()
+          // 1. 获取用户信息（含 roles）
+          const { roles } = await store.dispatch('user/getInfo')
+          
+          // 2. 新增：根据角色生成权限路由（关键步骤）
+          const accessedRoutes = await store.dispatch('permission/generateRoutes', roles)
+          
+          // 3. 新增：动态添加路由到路由实例
+          router.addRoutes(accessedRoutes)
+          
+          // 4. 确保路由已更新后再跳转（避免白屏）
+          next({ ...to, replace: true })
         } catch (error) {
-          // remove token and go to login page to re-login
           await store.dispatch('user/resetToken')
           Message.error(error || 'Has Error')
           next(`/login?redirect=${to.path}`)
@@ -45,50 +94,48 @@ router.beforeEach(async(to, from, next) => {
       }
     }
   } else {
-    /* has no token*/
-
     if (whiteList.indexOf(to.path) !== -1) {
-      // in the free login whitelist, go directly
       next()
     } else {
-      // other pages that do not have permission to access are redirected to the login page.
       next(`/login?redirect=${to.path}`)
       NProgress.done()
     }
   }
 })
 
+
 router.afterEach(() => {
   // finish progress bar
   NProgress.done()
 })
 
-// 过滤路由：只保留当前用户角色有权访问的路由
-function filterAsyncRoutes(routes, roles) {
-  const res = []
-  routes.forEach(route => {
-    const tmp = { ...route }
-    // 1. 路由无roles限制，直接放行
-    if (!tmp.meta || !tmp.meta.roles) {
-      res.push(tmp)
-    } 
-    // 2. 路由有roles限制，检查当前用户角色是否包含在内
-    else if (roles.some(role => tmp.meta.roles.includes(role))) {
-      // 递归过滤子路由
-      if (tmp.children) {
-        tmp.children = filterAsyncRoutes(tmp.children, roles)
-      }
-      res.push(tmp)
-    }
-  })
-  return res
-}
+// // 过滤路由：只保留当前用户角色有权访问的路由
+// function filterAsyncRoutes(routes, roles) {
+//   const res = []
+//   routes.forEach(route => {
+//     const tmp = { ...route }
+//     // 1. 路由无roles限制，直接放行
+//     if (!tmp.meta || !tmp.meta.roles) {
+//       res.push(tmp)
+//     }
+//     // 2. 路由有roles限制，检查当前用户角色是否包含在内
+//     else if (roles.some(role => tmp.meta.roles.includes(role))) {
+//       // 递归过滤子路由
+//       if (tmp.children) {
+//         tmp.children = filterAsyncRoutes(tmp.children, roles)
+//       }
+//       res.push(tmp)
+//     }
+//   })
+//   return res
+// }
 
-// @/utils/permission.js
-export function isSuperAdmin(roles) {
-  return roles && roles.includes('admin')
-}
+// // @/utils/permission.js
+// export function isSuperAdmin(roles) {
+//   return roles && roles.includes('admin')
+// }
 
-export function isCampusAdmin(roles) {
-  return roles && roles.includes('campus_admin')
-}
+// export function isCampusAdmin(roles) {
+//   return roles && roles.includes('campus_admin')
+// }
+

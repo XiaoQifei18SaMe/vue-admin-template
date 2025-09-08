@@ -126,9 +126,9 @@ export default {
 
     return {
       loginForm: {
-        username: 'admin',
-        password: 'aaaa1111@',
-        role: 'admin' // 新增角色字段
+        username: 'super_admin',
+        password: 'super123@',
+        role: 'super_admin' // 新增角色字段
       },
       loginRules: {
         username: [
