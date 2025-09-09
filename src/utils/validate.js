@@ -30,3 +30,14 @@ export function validPassword(str) {
   return reg.test(str.trim())
 }
 
+/**
+ * 验证手机号（中国大陆）
+ * @param {string} str - 待验证的手机号字符串
+ * @returns {Boolean} - 是否符合手机号格式
+ * 规则：11位数字，以13/14/15/16/17/18/19开头
+ */
+export function validPhone(str) {
+  const reg = /^1[3-9]\d{9}$/
+  return reg.test(str.trim())
+}
+

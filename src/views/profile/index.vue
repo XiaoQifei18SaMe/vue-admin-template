@@ -411,25 +411,29 @@ export default {
     },
 
     // 处理表单提交
-    handleSubmit() {
-      this.$refs.profileForm.validate(valid => {
-        if (valid) {
-          this.submitLoading = true
-          // 过滤不需要提交的字段（如confirmPassword）
+    async handleSubmit() {
+    this.$refs.profileForm.validate(async (valid) => {
+      if (valid) {
+        this.submitLoading = true
+        try {
+          // 过滤不需要提交的字段
           const submitData = { ...this.userInfo }
           delete submitData.confirmPassword
-          
-          updateProfile(submitData).then(response => {
-            this.submitLoading = false
-            this.$message.success('个人信息更新成功')
-            this.getUserInfo() // 重新获取最新信息
-          }).catch(error => {
-            this.submitLoading = false
-            this.$message.error('更新失败：' + (error.message || '未知错误'))
-          })
+          // 关键修改：通过store.dispatch调用action，仿照handleLogin
+          const response = await this.$store.dispatch('user/updateProfile', submitData)
+          this.$message.success('个人信息更新成功')
+          // 重新获取最新用户信息（可选，根据实际需求）
+          await this.$store.dispatch('user/getInfo')
+          // 刷新页面数据
+          this.getUserInfo()
+        } catch (error) {
+          this.$message.error('更新失败：' + (error.message || '未知错误'))
+        } finally {
+          this.submitLoading = false
         }
-      })
-    },
+      }
+    })
+  },
 
     // 重置表单
     handleReset() {

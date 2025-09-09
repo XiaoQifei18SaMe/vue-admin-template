@@ -244,5 +244,53 @@ module.exports = [
         data: { success: true }
       };
     }
+  },
+
+  // mock/user.js 中添加以下接口
+{
+  url: '/profile/update',
+  type: 'post',
+  response: config => {
+    const { id, ...updateData } = config.body; // 提取id和其他更新字段（排除id）
+    
+    // 查找用户（同时检查默认用户和注册用户）
+    let user = null;
+    
+    // 检查默认用户（根据id匹配）
+    Object.values(defaultUsers).forEach(u => {
+      if (u.id === id) {
+        user = u;
+      }
+    });
+    
+    // 检查注册用户
+    if (!user) {
+      Object.values(registeredUsers).forEach(u => {
+        if (u.id === id) {
+          user = u;
+        }
+      });
+    }
+
+    // 用户不存在处理
+    if (!user) {
+      return { code: 50008, message: '用户不存在' };
+    }
+
+    // 允许修改所有字段（除id外）
+    // 遍历更新字段并赋值（只更新传入的字段）
+    Object.keys(updateData).forEach(key => {
+      // 排除id字段，其他字段均可更新
+      if (key !== 'id' && user.hasOwnProperty(key)) {
+        user[key] = updateData[key];
+      }
+    });
+
+    return {
+      code: 20000,
+      message: '信息更新成功',
+      data: { success: true }
+    }
   }
+}
 ]

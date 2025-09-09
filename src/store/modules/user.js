@@ -1,6 +1,7 @@
 import { login, logout, getInfo } from '@/api/user'
 import { getToken, setToken, removeToken } from '@/utils/auth'
 import { resetRouter } from '@/router'
+import { updateProfile } from '@/api/profile'
 
 const getDefaultState = () => {
   return {
@@ -132,6 +133,26 @@ const actions = {
       removeToken() // must remove  token  first
       commit('RESET_STATE')
       resolve()
+    })
+  },
+
+  // 新增：更新个人信息
+  updateProfile({ commit }, userInfo) {
+    return new Promise((resolve, reject) => {
+      // 调用更新个人信息的API
+      updateProfile(userInfo).then(response => {
+        const { data } = response
+        if (!data) {
+          return reject('更新失败，请重试')
+        }
+        // 更新store中的用户信息（根据实际返回数据结构调整）
+        commit('SET_NAME', userInfo.name)
+        commit('SET_AVATAR', userInfo.avatar || data.avatar)
+        // 如需更新其他字段（如username、phone等），可添加对应的mutation
+        resolve(response)
+      }).catch(error => {
+        reject(error)
+      })
     })
   }
 }
