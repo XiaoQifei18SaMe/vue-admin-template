@@ -102,6 +102,7 @@ const actions = {
         
         // 4. 存储角色信息（用于permission.js过滤路由）
         commit('SET_ROLE', role)
+        console.log("vuex存储role: " + role)
         commit('SET_NAME', name)
         commit('SET_AVATAR', avatar)
         

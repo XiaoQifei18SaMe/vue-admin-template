@@ -4,7 +4,7 @@ import request from '@/utils/request'
 // 获取校区列表
 export function getCampusList(params) {
   return request({
-    url: '/vue-admin-template/campus/list',
+    url: '/campus/list',
     method: 'get',
     params
   })
@@ -13,7 +13,7 @@ export function getCampusList(params) {
 // 获取管理员列表（用于选择校区管理员）
 export function getAdminList() {
   return request({
-    url: '/vue-admin-template/campus/admins',
+    url: '/campus/admins',
     method: 'get'
   })
 }
@@ -21,7 +21,7 @@ export function getAdminList() {
 // 创建校区
 export function createCampus(data) {
   return request({
-    url: '/vue-admin-template/campus/create',
+    url: '/campus/create',
     method: 'post',
     data
   })
@@ -30,7 +30,7 @@ export function createCampus(data) {
 // 更新校区
 export function updateCampus(id, data) {
   return request({
-    url: `/vue-admin-template/campus/update/${id}`,
+    url: `/campus/update/${id}`,
     method: 'post',
     data
   })
@@ -39,7 +39,7 @@ export function updateCampus(id, data) {
 // 删除校区
 export function deleteCampus(id) {
   return request({
-    url: `/vue-admin-template/campus/delete/${id}`,
+    url: `/campus/delete/${id}`,
     method: 'post'
   })
 }

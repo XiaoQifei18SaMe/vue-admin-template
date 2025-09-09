@@ -197,10 +197,9 @@ export const asyncRoutes = [
   {
     path: '/campus',
     component: Layout,
-    name: 'CampusManagement',
     meta: { 
       title: '校区管理', 
-      icon: 'location',
+      icon: 'campus',
       roles: ['super_admin'] // 仅超级管理员可见
     },
     children: [
@@ -213,21 +212,21 @@ export const asyncRoutes = [
   },
 
   // 1. 超级管理员专属：校区管理
-  {
-    path: '/campusold',
-    component: Layout,
-    name: 'CampusManagement',
-    meta: { 
-      title: '校区管理', 
-      icon: 'campus',
-      roles: ['super_admin'] // 仅超级管理员可见
-    },
-    children: [
-      { path: 'list', component: () => import('@/views/campusold/list'), meta: { title: '校区列表', icon : 'campus'} },
-      { path: 'create', component: () => import('@/views/campusold/create'), meta: { title: '创建校区', icon : 'campus'} },
-      { path: 'edit/:id', component: () => import('@/views/campusold/edit'), meta: { title: '编辑校区', icon : 'campus'} }
-    ]
-  },
+  // {
+  //   path: '/campusold',
+  //   component: Layout,
+  //   name: 'CampusManagement',
+  //   meta: { 
+  //     title: '校区管理', 
+  //     icon: 'campus',
+  //     roles: ['super_admin'] // 仅超级管理员可见
+  //   },
+  //   children: [
+  //     { path: 'list', component: () => import('@/views/campusold/list'), meta: { title: '校区列表', icon : 'campus'} },
+  //     { path: 'create', component: () => import('@/views/campusold/create'), meta: { title: '创建校区', icon : 'campus'} },
+  //     { path: 'edit/:id', component: () => import('@/views/campusold/edit'), meta: { title: '编辑校区', icon : 'campus'} }
+  //   ]
+  // },
   // 2. 管理员通用：个人信息管理
   {
     path: '/admin',

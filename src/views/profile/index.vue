@@ -372,6 +372,7 @@ export default {
         this.userInfo = { ...this.userInfo, ...data }
         console.log(this.userInfo.campus)
         console.log(this.userInfo.avatar)
+        console.log("当前角色是"+ this.$store.getters.role)
         this.userInfo.confirmPassword = this.userInfo.password
         // 初始化头像列表
         if (this.userInfo.avatar) {

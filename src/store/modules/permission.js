@@ -22,6 +22,7 @@ function filterAsyncRoutes(routes, role) { // 参数从 roles 改为 role
 function hasPermission(role, route) {
   if (route.meta && route.meta.roles) {
     // 单个角色是否在路由允许的角色列表中
+    console.log("hasPermission " + role)
     return route.meta.roles.includes(role)
   } else {
     // 无 meta.roles 的路由视为公共路由

@@ -29,7 +29,7 @@ const findCampusIndex = (id) => {
 module.exports = [
   // 1. 获取校区列表（不变）
   {
-    url: '/vue-admin-template/campus/list',
+    url: '/campus/list',
     type: 'get',
     response: config => {
       const { page = 1, size = 10 } = config.query
@@ -45,7 +45,7 @@ module.exports = [
 
   // 2. 获取管理员列表（不变）
   {
-    url: '/vue-admin-template/campus/admins',
+    url: '/campus/admins',
     type: 'get',
     response: () => ({
       code: 20000,
@@ -55,7 +55,7 @@ module.exports = [
 
   // 3. 创建校区（新增功能：添加到模拟数据）
   {
-    url: '/vue-admin-template/campus/create',
+    url: '/campus/create',
     type: 'post',
     response: config => {
       const newCampus = config.body // 获取前端提交的表单数据
@@ -73,57 +73,63 @@ module.exports = [
     }
   },
 
-  // 4. 更新校区（编辑功能：修改模拟数据）
   {
-    url: '/vue-admin-template/campus/update/.+',
+    url: '/campus/update/:id', // 明确用 :id 定义路径参数
     type: 'post',
     response: config => {
-      // 从URL中提取ID（例如 /update/123 → 123）
-      const id = config.url.split('/').pop()
-      const updateData = config.body // 前端提交的更新数据
-      const index = findCampusIndex(id)
+      // 1. 从 Mock 原生参数中获取 ID（可靠，避免 split 解析错误）
+      const id = config.params.id; // 关键修复：用 config.params.id 替代 split
+      const updateData = config.body;
+      console.log(id)
+
+      // 2. 查找校区（确保 ID 类型一致，Mock 生成的 id 是字符串，直接比较）
+      const index = campusData.items.findIndex(item => item.id === id);
       
       if (index !== -1) {
-        // 找到对应校区并更新数据
+        // 3. 匹配管理员信息（确保 adminId 类型一致，前端传递的是数字，adminList 是数字 ID）
+        const admin = adminList.find(a => a.id === Number(updateData.adminId));
         campusData.items[index] = {
           ...campusData.items[index],
           ...updateData,
-          // 更新管理员信息
-          admin: adminList.find(a => a.id === updateData.adminId) || campusData.items[index].admin
-        }
+          admin: admin || { realName: '未知', phone: '未知' }
+        };
         return {
           code: 20000,
           data: { success: true }
-        }
+        };
       }
-      
+
       return {
         code: 50000,
-        data: { success: false, message: '校区不存在' }
+        message: '校区不存在', // 明确错误信息，方便前端排查
+        data: { success: false }
       }
     }
   },
 
-  // 5. 删除校区（删除功能：从模拟数据中移除）
+  // 5. 修复：删除校区接口（同更新接口的 ID 解析方式）
   {
-    url: '/vue-admin-template/campus/delete/.+',
+    url: '/campus/delete/:id', // 明确路径参数
     type: 'post',
     response: config => {
-      const id = config.url.split('/').pop()
-      const index = findCampusIndex(id)
+      // 1. 可靠获取 ID
+      const id = config.params.id;
+      const index = campusData.items.findIndex(item => item.id === id);
       
       if (index !== -1) {
-        campusData.items.splice(index, 1) // 从数组中删除
+        campusData.items.splice(index, 1);
         return {
           code: 20000,
           data: { success: true }
-        }
+        };
       }
-      
+
       return {
         code: 50000,
-        data: { success: false, message: '校区不存在' }
+        message: '校区不存在',
+        data: { success: false }
       }
     }
   }
+
 ]

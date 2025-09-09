@@ -203,9 +203,9 @@ export default {
   computed: {
     // 判断是否为超级管理员（匹配 mock 中的 'super_admin' 角色）
     isSuperAdmin() {
-       const roles = this.$store.getters.roles;
-       const result = isSuperAdmin(roles);
-       console.log('角色:', roles, '是否为超级管理员:', result); // 调试日志
+       const role = this.$store.getters.role;
+       const result = isSuperAdmin(role);
+       console.log('角色:', role, '是否为超级管理员:', result); // 调试日志
        return result;
     }
   },
@@ -288,19 +288,19 @@ export default {
     
     // 编辑校区
     handleEdit(row) {
-      this.dialogTitle = '编辑校区'
-      this.currentCampusId = row.id
-      this.formData = {
-        name: row.name,
-        location: row.location,
-        tableCount: row.tableCount,
-        adminId: row.admin.id
-      }
-      this.$nextTick(() => {
-        this.$refs.campusForm.clearValidate()
-      })
-      this.dialogVisible = true
-    },
+  this.dialogTitle = '编辑校区'
+  this.currentCampusId = row.id // 关键：直接用 row.id（Mock 生成的字符串 ID）
+  this.formData = {
+    name: row.name,
+    location: row.location,
+    tableCount: row.tableCount,
+    adminId: row.admin.id // row.admin.id 是数字（与 adminList 一致）
+  }
+  this.$nextTick(() => {
+    this.$refs.campusForm.clearValidate()
+  })
+  this.dialogVisible = true
+},
     
     // 删除校区
     handleDelete(row) {
