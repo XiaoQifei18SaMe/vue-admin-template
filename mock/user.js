@@ -91,53 +91,73 @@ const defaultUsers  = {
 // 2. 注册用户存储（模拟数据库表）
 const registeredUsers = {} // 独立对象，避免嵌套问题
 
-// 辅助函数：获取所有管理员用户
-const getAdminUsers = () => {
-  // 从默认用户和注册用户中筛选出管理员角色
-  const allUsers = { ...defaultUsers, ...registeredUsers };
-  return Object.values(allUsers)
-    .filter(user => user.role === 'super_admin' || user.role === 'campus_admin')
-    .map(user => ({
-      id: user.token,  // 使用token作为唯一标识
-      realName: user.info.name,
-      phone: user.info.phone || '',
-      email: user.info.email || '',
-      role: user.role,
-      campus: user.info.campus || ''
-    }));
-}
+
+// 通用登录验证函数（避免代码重复）
+const validateLogin = (config, role) => {
+  const { username, password } = config.body;
+  
+  // 从默认用户和注册用户中查询
+  const user = defaultUsers[username] || registeredUsers[username];
+
+  // 验证逻辑
+  if (!user) {
+    return { code: 60204, message: '用户名不存在' };
+  } else if (user.password !== password) {
+    return { code: 60204, message: '密码错误' };
+  } else if (user.role !== role) {
+    return { code: 60204, message: `角色不匹配，应为${user.role}` };
+  }
+
+  return {
+    code: 20000,
+    data: { token: user.token }
+  };
+};
+
 module.exports = [
-  // 登录接口：必须同时查询默认用户和注册用户（核心修复点）
+  // 超级管理员登录
   {
     url: '/super_admin/login',
     type: 'post',
-    response: config => {
-      console.log('Mock 拦截到登录请求', config) // 新增日志验证
-      const { username, password, role } = config.body;
-
-      // 关键修复：先查默认用户，再查注册用户（覆盖所有用户来源）
-      const user = defaultUsers[username] || registeredUsers[username];
-
-      // 修复错误处理逻辑，避免返回500
-      if (!user) {
-        return { code: 60204, message: '用户名不存在' }; // 明确错误码
-      } else if (user.password !== password) {
-        return { code: 60204, message: '密码错误' };
-      } else if (user.role !== role) {
-        return { code: 60204, message: '角色不匹配' };
-      }
-
-      // 确保返回正确的token结构
-      return {
-        code: 20000,
-        data: { token: user.token } // 必须返回token，否则登录后无法获取用户信息
-      };
+    response: (config) => {
+      console.log('超级管理员登录请求', config.body);
+      return validateLogin(config, 'super_admin');
     }
   },
-
+  
+  // 管理员登录
+  {
+    url: '/admin/login',
+    type: 'post',
+    response: (config) => {
+      console.log('管理员登录请求', config.body);
+      return validateLogin(config, 'admin');
+    }
+  },
+  
+  // 教练登录
+  {
+    url: '/coach/login',
+    type: 'post',
+    response: (config) => {
+      console.log('教练登录请求', config.body);
+      return validateLogin(config, 'coach');
+    }
+  },
+  
+  // 学生登录
+  {
+    url: '/student/login',
+    type: 'post',
+    response: (config) => {
+      console.log('学生登录请求', config.body);
+      return validateLogin(config, 'student');
+    }
+  },
+    
   // 获取用户信息接口：修复token查询逻辑（避免500）
   {
-    url: '/vue-admin-template/user/info\.*',
+    url: '/info',
     type: 'get',
     response: config => {
       const { token } = config.query;
