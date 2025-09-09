@@ -73,63 +73,52 @@ module.exports = [
     }
   },
 
-  {
-    url: '/campus/update/:id', // 明确用 :id 定义路径参数
-    type: 'post',
-    response: config => {
-      // 1. 从 Mock 原生参数中获取 ID（可靠，避免 split 解析错误）
-      const id = config.params.id; // 关键修复：用 config.params.id 替代 split
-      const updateData = config.body;
-      console.log(id)
-
-      // 2. 查找校区（确保 ID 类型一致，Mock 生成的 id 是字符串，直接比较）
-      const index = campusData.items.findIndex(item => item.id === id);
-      
-      if (index !== -1) {
-        // 3. 匹配管理员信息（确保 adminId 类型一致，前端传递的是数字，adminList 是数字 ID）
-        const admin = adminList.find(a => a.id === Number(updateData.adminId));
-        campusData.items[index] = {
-          ...campusData.items[index],
-          ...updateData,
-          admin: admin || { realName: '未知', phone: '未知' }
-        };
-        return {
-          code: 20000,
-          data: { success: true }
-        };
-      }
-
-      return {
-        code: 50000,
-        message: '校区不存在', // 明确错误信息，方便前端排查
-        data: { success: false }
-      }
+// 更新校区接口（相对路径正则）
+{
+  url: /^\/campus\/update\/.*$/, // 匹配 /campus/update/任意ID
+  type: 'post',
+  response: config => {
+    // 防御性处理：确保 url 存在
+    if (!config.url) {
+      return { code: 50000, message: 'URL 解析失败', data: { success: false } }
     }
-  },
+    // 提取 ID（兼容相对路径，如 /campus/update/123）
+    const urlParts = config.url.split('/').filter(part => part); // 过滤空字符串
+    const id = urlParts.pop() || ''; // 取最后一段
+    const updateData = config.body;
 
-  // 5. 修复：删除校区接口（同更新接口的 ID 解析方式）
-  {
-    url: '/campus/delete/:id', // 明确路径参数
-    type: 'post',
-    response: config => {
-      // 1. 可靠获取 ID
-      const id = config.params.id;
-      const index = campusData.items.findIndex(item => item.id === id);
-      
-      if (index !== -1) {
-        campusData.items.splice(index, 1);
-        return {
-          code: 20000,
-          data: { success: true }
-        };
-      }
-
-      return {
-        code: 50000,
-        message: '校区不存在',
-        data: { success: false }
-      }
+    const index = campusData.items.findIndex(item => item.id === id);
+    if (index !== -1) {
+      const admin = adminList.find(a => a.id === Number(updateData.adminId));
+      campusData.items[index] = {
+        ...campusData.items[index],
+        ...updateData,
+        admin: admin || { realName: '未知', phone: '未知' }
+      };
+      return { code: 20000, data: { success: true } };
     }
+    return { code: 50000, message: '校区不存在', data: { success: false } };
   }
+},
+
+// 删除校区接口（相对路径正则）
+{
+  url: /^\/campus\/delete\/.*$/, // 匹配 /campus/delete/任意ID
+  type: 'post',
+  response: config => {
+    if (!config.url) { // 防御性处理
+      return { code: 50000, message: 'URL 解析失败', data: { success: false } }
+    }
+    const urlParts = config.url.split('/').filter(part => part);
+    const id = urlParts.pop() || '';
+    const index = campusData.items.findIndex(item => item.id === id);
+    
+    if (index !== -1) {
+      campusData.items.splice(index, 1);
+      return { code: 20000, data: { success: true } };
+    }
+    return { code: 50000, message: '校区不存在', data: { success: false } };
+  }
+}
 
 ]

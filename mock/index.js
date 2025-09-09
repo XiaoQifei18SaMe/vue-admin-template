@@ -34,6 +34,7 @@ function mockXHR() {
       let result = null
       if (respond instanceof Function) {
         const { body, type, url } = options
+        console.log('拦截到的请求路径：', url); // 调试用，确认url是否正确
         // https://expressjs.com/en/4x/api.html#req
         result = respond({
           method: type,
