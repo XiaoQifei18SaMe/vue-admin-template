@@ -183,7 +183,6 @@
 <script>
 import { getInfo } from '@/api/user'
 import { uploadFile } from '@/api/user'
-import { updateProfile } from '@/api/profile'
 import { validPhone, validUsername, validPassword} from '@/utils/validate'
 export default {
   name: 'Profile',
@@ -276,7 +275,7 @@ export default {
       // 表单验证规则
       formRules: {
         username: [
-          { required: true, trigger: 'blur', validator: validateUsername }
+          { required: false, trigger: 'blur', validator: validateUsername }
         ],
         password: [
           { trigger: 'blur', validator: validatePassword }
@@ -285,10 +284,10 @@ export default {
           { trigger: 'blur', validator: validateConfirmPassword }
         ],
         name: [
-          { required: true, trigger: 'blur', message: '请输入真实姓名' }
+          { required: false, trigger: 'blur', message: '请输入真实姓名' }
         ],
         phone: [
-          { required: true, trigger: 'blur', validator: validatePhone }
+          { required: false, trigger: 'blur', validator: validatePhone }
         ],
         email: [
           { type: 'email', trigger: 'blur', message: '请输入正确的邮箱地址' }
@@ -297,7 +296,7 @@ export default {
           { trigger: ['blur', 'change'], validator: validateAge }
         ],
         campus: [
-          { required: true, trigger: 'change', message: '请选择校区' }
+          { required: false, trigger: 'change', message: '请选择校区' }
         ],
         avatar: [
           { required: false, trigger: 'change', message: '请上传个人头像', validator: (rule, value, callback) => {
@@ -378,6 +377,8 @@ export default {
       getInfo(this.currentUser.token).then(response => {
         const { data } = response
         this.userInfo = { ...this.userInfo, ...data }
+        console.log(this.userInfo.campus)
+        this.userInfo.confirmPassword = this.userInfo.password
         // 初始化头像列表
         if (this.userInfo.avatar) {
           this.avatarList = [{

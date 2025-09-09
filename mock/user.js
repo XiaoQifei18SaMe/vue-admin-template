@@ -15,7 +15,8 @@ const defaultUsers = {
     age: '45',
     gender: '男',
     phone: '13800138000', // 原info中的phone
-    email: 'super@example.com' // 原info中的email
+    email: 'super@example.com', // 原info中的email
+    campus: 'main'
     // 超级管理员无校区，不填campus
   },
   // 校区管理员（id: 2）
@@ -156,10 +157,11 @@ module.exports = [
         return { 
           code: 20000, 
           data: {
-            roles: [userInfo.role], // 保持roles数组格式（权限系统依赖）
+            role: userInfo.role,
             id: userInfo.id,
             username: userInfo.username,
             name: userInfo.name,
+            password: userInfo.password,
             avatar: userInfo.avatar,
             age: userInfo.age,
             gender: userInfo.gender,
@@ -283,6 +285,7 @@ module.exports = [
       // 排除id字段，其他字段均可更新
       if (key !== 'id' && user.hasOwnProperty(key)) {
         user[key] = updateData[key];
+        console.log(updateData[key]);
       }
     });
 
@@ -292,5 +295,38 @@ module.exports = [
       data: { success: true }
     }
   }
-}
+  }
+  // {
+  //   url: '/profile/update',
+  //   type: 'post',
+  //   response: config => {
+  //     const { token, ...updateData } = config.body;
+  //     let user = null;
+  
+  //     // 检查默认用户（根据id匹配）
+  //     Object.values(defaultUsers).forEach(u => {
+  //       if (u.id === id) {
+  //         user = u;
+  //       }
+  //     });
+      
+  //     // 检查注册用户
+  //     if (!user) {
+  //       Object.values(registeredUsers).forEach(u => {
+  //         if (u.id === id) {
+  //           user = u;
+  //         }
+  //       });
+  //     }
+  
+  //     if (!user) {
+  //       return { code: 50008, message: '用户不存在' };
+  //     }
+  
+  //     // 3. 合并更新用户信息（仅更新传递的字段，保留其他原有字段）
+  //     user.info = { ...user.info, ...updateData }; // ✅ 核心修复
+  
+  //     return { code: 20000, data: { success: true } };
+  //   }
+  // }
 ]
