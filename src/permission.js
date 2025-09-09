@@ -74,16 +74,15 @@ router.beforeEach(async(to, from, next) => {
         next()
       } else {
         try {
-          // 1. 获取用户信息（含 roles）
-          const { roles } = await store.dispatch('user/getInfo')
+          // 1. 获取用户信息（含单个 role）
+          const userInfo = await store.dispatch('user/getInfo')
+          const { role } = userInfo // 提取单个角色
           
-          // 2. 新增：根据角色生成权限路由（关键步骤）
-          const accessedRoutes = await store.dispatch('permission/generateRoutes', roles)
+          // 2. 根据单个角色生成权限路由
+          const accessedRoutes = await store.dispatch('permission/generateRoutes', role)
           
-          // 3. 新增：动态添加路由到路由实例
+          // 3. 动态添加路由
           router.addRoutes(accessedRoutes)
-          
-          // 4. 确保路由已更新后再跳转（避免白屏）
           next({ ...to, replace: true })
         } catch (error) {
           await store.dispatch('user/resetToken')

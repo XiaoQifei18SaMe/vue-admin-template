@@ -1,90 +1,70 @@
+const Mock = require('mockjs') // 引入Mock用于生成随机ID
 
-const tokens = {
-  admin: {
-    token: 'admin-token'
-  },
-  editor: {
-    token: 'editor-token'
-  }
-}
-
-// const users = {
-//   'admin-token': {
-//     roles: ['admin'],
-//     introduction: 'I am a super administrator',
-//     avatar: 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif',
-//     name: 'Super Admin'
-//   },
-//   'editor-token': {
-//     roles: ['editor'],
-//     introduction: 'I am an editor',
-//     avatar: 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif',
-//     name: 'Normal Editor'
-//   }
-// }
-
-// 1. 系统默认用户（初始数据）
-const defaultUsers  = {
-  // 1. 新增超级管理员
-  'super_admin': {
+// 1. 系统默认用户（初始数据）：用id作为键，所有字段平级存放
+const defaultUsers = {
+  // 超级管理员（id: 1）
+  '1': {
+    id: '1', // 新增id字段，与键保持一致
+    username: 'super_admin', // 原用户名作为字段
     password: 'super123@',
-    role: 'super_admin', // 角色标识
+    role: 'super_admin', // 单个角色（非数组）
     token: 'super-admin-token',
-    info: {
-      roles: ['super_admin'],
-      name: '超级管理员',
-      avatar: 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif',
-      phone: '13800138000',  // 添加电话
-      email: 'super@example.com'  // 添加邮箱
-      // 超级管理员无校区限制，无需campus字段
-    }
+    name: '超级管理员', // 原info中的name
+    avatar: 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif', // 原info中的avatar
+    phone: '13800138000', // 原info中的phone
+    email: 'super@example.com' // 原info中的email
+    // 超级管理员无校区，不填campus
   },
-  // 2. 新增校区管理员（示例：东校区管理员）
-  'campus_admin': {
+  // 校区管理员（id: 2）
+  '2': {
+    id: '2',
+    username: 'campus_admin',
     password: 'campus123@',
-    role: 'campus_admin', // 角色标识
+    role: 'campus_admin',
     token: 'campus-admin-east-token',
-    info: {
-      roles: ['campus_admin'],
-      name: '东校区管理员',
-      avatar: 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif',
-      phone: '13900139000',  // 添加电话
-      email: 'east@example.com',  // 添加邮箱
-      campus: 'east' // 核心：关联所属校区（对应校区value）
-    }
+    name: '东校区管理员',
+    avatar: 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif',
+    phone: '13900139000',
+    email: 'east@example.com',
+    campus: 'east' // 关联校区
   },
-  'student_wang': {
+  // 学生（id: 3）
+  '3': {
+    id: '3',
+    username: 'student_wang',
     password: 'bbbb2222@',
     role: 'student',
     token: 'student-token',
-    info: {
-      roles: ['student'],
-      name: '学生小王',
-      avatar: 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif'
-    }
+    name: '学生小王',
+    avatar: 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif'
+    // 学生可按需添加phone/email等字段
   },
-  'coach_K': {
+  // 教练（id: 4）
+  '4': {
+    id: '4',
+    username: 'coach_K',
     password: 'cccc3333@',
     role: 'coach',
     token: 'coach-token',
-    info: {
-      roles: ['coach'],
-      name: '教练K',
-      avatar: 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif'
-    }
-  },
+    name: '教练K',
+    avatar: 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif'
+  }
 }
 
-// 2. 注册用户存储（模拟数据库表）
-const registeredUsers = {} // 独立对象，避免嵌套问题
+// 2. 注册用户存储（模拟数据库表）：键为id，结构与默认用户一致
+const registeredUsers = {}
 
 
-// 通用登录验证函数（避免代码重复）
+// 通用登录验证函数：调整为通过username查找用户（因键改为id）
 const validateLogin = (config, role) => {
   const { username, password } = config.body;
   
-  // 从默认用户和注册用户中查询
-  const user = defaultUsers[username] || registeredUsers[username];
+  // 从默认用户中查找（遍历values，按username匹配）
+  const defaultUser = Object.values(defaultUsers).find(user => user.username === username);
+  // 从注册用户中查找
+  const registeredUser = Object.values(registeredUsers).find(user => user.username === username);
+  // 优先取默认用户，再取注册用户
+  const user = defaultUser || registeredUser;
 
   // 验证逻辑
   if (!user) {
@@ -142,82 +122,52 @@ module.exports = [
     }
   },
     
-  // 获取用户信息接口：修复token查询逻辑（避免500）
+  // 获取用户信息接口：返回平级字段（无info嵌套）
   {
     url: '/info',
     type: 'get',
     response: config => {
       const { token } = config.query;
 
-      // 修复：同时从默认用户和注册用户中查询token对应的信息
-      let userInfo = null;
+      // 从默认用户和注册用户中按token查找
+      let user = null;
       // 检查默认用户
-      Object.values(defaultUsers).forEach(user => {
-        if (user.token === token) {
-          userInfo = user.info;
+      Object.values(defaultUsers).forEach(u => {
+        if (u.token === token) {
+          user = u;
         }
       });
       // 检查注册用户
-      if (!userInfo) {
-        Object.values(registeredUsers).forEach(user => {
-          if (user.token === token) {
-            userInfo = user.info;
+      if (!user) {
+        Object.values(registeredUsers).forEach(u => {
+          if (u.token === token) {
+            user = u;
           }
         });
       }
 
-      // 明确错误处理，避免返回500
-      if (!userInfo) {
+      if (!user) {
         return { code: 50008, message: '登录已过期，请重新登录' };
       }
 
-      return { code: 20000, data: userInfo };
+      // 返回用户平级数据（前端需要的字段）
+      return { 
+        code: 20000, 
+        data: {
+          id: user.id,
+          username: user.username,
+          role: user.role, // 单个角色
+          name: user.name,
+          avatar: user.avatar,
+          phone: user.phone || '', // 非必填字段默认空
+          email: user.email || '',
+          campus: user.campus || ''
+        } 
+      };
     }
   },
-  // // 登录接口修改：验证用户名、密码、角色
-  // {
-  //   url: '/vue-admin-template/user/login',
-  //   type: 'post',
-  //   response: config => {
-  //     const { username, password, role } = config.body
-  //    // 先查默认用户，再查注册用户
-  //    const user = defaultUsers[username] || registeredUsers[username]
 
-  //     // 验证逻辑
-  //     if (!user) {
-  //       return { code: 60204, message: '用户名不存在' }
-  //     } else if (user.password !== password) {
-  //       return { code: 60204, message: '密码错误' }
-  //     } else if (user.role !== role) {
-  //       return { code: 60204, message: '角色不匹配' }
-  //     }
-
-  //     // 验证通过返回token
-  //     return {
-  //       code: 20000,
-  //       data: { token: user.token }
-  //     }
-  //   }
-  // },
-
-  // // 获取用户信息接口（根据token返回对应角色信息）
-  // {
-  //   url: '/vue-admin-template/user/info\.*',
-  //   type: 'get',
-  //   response: config => {
-  //     const { token } = config.query
-  //     // 根据token反向查找用户信息
-  //     const userInfo = Object.values(users).find(u => u.token === token)?.info
-      
-  //     if (!userInfo) {
-  //       return { code: 50008, message: '用户信息不存在' }
-  //     }
-  //     return { code: 20000, data: userInfo }
-  //   }
-  // },
-
-
-  // user logout
+  // 用户登出
   {
     url: '/vue-admin-template/user/logout',
     type: 'post',
@@ -229,12 +179,11 @@ module.exports = [
     }
   },
 
-  // 文件上传接口（必须添加）
+  // 文件上传接口
   {
     url: '/vue-admin-template/user/upload',
     type: 'post',
     response: () => {
-      // 模拟返回上传成功的响应
       return {
         code: 20000,
         message: '图片上传成功',
@@ -245,113 +194,47 @@ module.exports = [
     }
   },
 
-  // 新增：注册接口（核心缺失部分）
+  // 注册接口：存储结构改为id键，平级字段
   {
     url: '/vue-admin-template/user/register',
     type: 'post',
     response: config => {
-      const { username, role, password } = config.body;
+      const { username, role, password, realName, photo, phone, email, campus } = config.body;
 
-      // 1. 模拟验证：用户名已存在
-      // 检查用户名是否已存在（默认用户或注册用户中）
-      if (defaultUsers[username] || registeredUsers[username]) {
+      // 检查用户名是否已存在（默认用户或注册用户）
+      const isUsernameExist = [
+        ...Object.values(defaultUsers),
+        ...Object.values(registeredUsers)
+      ].some(user => user.username === username);
+
+      if (isUsernameExist) {
         return { code: 60204, message: '用户名已存在' }
       }
 
-      // 2. 模拟注册成功：保存用户到模拟数据库
+      // 生成唯一id（用Mock生成随机id）
+      const id = Mock.mock('@id');
+      // 生成token
+      const token = `${role}-${username}-${id}-token`;
 
-      // 保存到注册用户表
-      registeredUsers[username] = {
+      // 保存到注册用户表（平级字段，无info）
+      registeredUsers[id] = {
+        id, // 键与id字段一致
         username,
         password,
         role,
-        token: `${role}-${username}-token`,
-        info: {
-          roles: [role],
-          name: config.body.realName || username,
-          avatar: config.body.photo || 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif'
-        }
+        token,
+        name: realName || username, // 原info.name -> 平级name
+        avatar: photo || 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif', // 原info.avatar -> 平级avatar
+        phone: phone || '',
+        email: email || '',
+        campus: campus || '' // 按需存储校区
       };
-      // users.registered_users[username] = {
-      //   username,
-      //   password,
-      //   role,
-      //   token: `${role}-${username}-token`, // 生成临时token
-      //   info: {
-      //     roles: [role],
-      //     name: config.body.realName || username,
-      //     avatar: config.body.photo || 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif'
-      //   }
-      // };
 
-      // 3. 返回注册成功响应
       return {
-        code: 20000, // 成功码（与其他接口保持一致）
+        code: 20000,
         message: role === 'student' ? '注册成功' : '注册申请已提交',
-        data: { success: true }
+        data: { success: true, id } // 返回注册用户的id
       };
     }
   }
-
 ]
-
-// module.exports = [
-//   // user login
-//   {
-//     url: '/vue-admin-template/user/login',
-//     type: 'post',
-//     response: config => {
-//       const { username } = config.body
-//       const token = tokens[username]
-
-//       // mock error
-//       if (!token) {
-//         return {
-//           code: 60204,
-//           message: 'Account and password are incorrect.'
-//         }
-//       }
-
-//       return {
-//         code: 20000,
-//         data: token
-//       }
-//     }
-//   },
-
-//   // get user info
-//   {
-//     url: '/vue-admin-template/user/info\.*',
-//     type: 'get',
-//     response: config => {
-//       const { token } = config.query
-//       const info = users[token]
-
-//       // mock error
-//       if (!info) {
-//         return {
-//           code: 50008,
-//           message: 'Login failed, unable to get user details.'
-//         }
-//       }
-
-//       return {
-//         code: 20000,
-//         data: info
-//       }
-//     }
-//   },
-
-//   // user logout
-//   {
-//     url: '/vue-admin-template/user/logout',
-//     type: 'post',
-//     response: _ => {
-//       return {
-//         code: 20000,
-//         data: 'success'
-//       }
-//     }
-//   }
-// ]
-

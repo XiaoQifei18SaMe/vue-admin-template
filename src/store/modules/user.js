@@ -7,7 +7,7 @@ const getDefaultState = () => {
     token: getToken(),
     name: '',
     avatar: '',
-    roles: [] // 1. 新增：存储用户角色（关键！用于权限判断）
+    role: ''// （关键！用于权限判断）
   }
 }
 
@@ -27,8 +27,8 @@ const mutations = {
     state.avatar = avatar
   },
   // 2. 新增：设置用户角色的mutation
-  SET_ROLES: (state, roles) => {
-    state.roles = roles
+  SET_ROLE: (state, role) => {
+    state.role = role
   }
 }
 
@@ -97,10 +97,10 @@ const actions = {
         }
 
         // 3. 从接口返回数据中提取角色信息（关键！）
-        const { name, avatar, roles } = data
+        const { name, avatar, role } = data
         
         // 4. 存储角色信息（用于permission.js过滤路由）
-        commit('SET_ROLES', roles)
+        commit('SET_ROLE', role)
         commit('SET_NAME', name)
         commit('SET_AVATAR', avatar)
         
