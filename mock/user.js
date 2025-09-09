@@ -53,19 +53,6 @@ const defaultUsers  = {
       campus: 'east' // 核心：关联所属校区（对应校区value）
     }
   },
-  'campus_admin_west': {
-    password: 'campus123@',
-    role: 'campus_admin',
-    token: 'campus-admin-west-token',
-    info: {
-      roles: ['campus_admin'],
-      name: '西校区管理员',
-      avatar: 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif',
-      phone: '13700137000',
-      email: 'west@example.com',
-      campus: 'west'
-    }
-  },
   'student_wang': {
     password: 'bbbb2222@',
     role: 'student',
@@ -131,7 +118,7 @@ module.exports = [
     type: 'post',
     response: (config) => {
       console.log('管理员登录请求', config.body);
-      return validateLogin(config, 'admin');
+      return validateLogin(config, 'campus_admin');
     }
   },
   

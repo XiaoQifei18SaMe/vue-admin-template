@@ -57,8 +57,9 @@
       <el-button :loading="loading" type="primary" style="width:100%;margin-bottom:30px;" @click.native.prevent="handleLogin">登录</el-button>
 
       <div class="tips">
-        <span>用户1: admin / aaaa1111@ / 管理员</span><br>
-        <span>用户2: student_wang / bbbb2222@ / 学生</span><br>
+        <span>用户1: super_admin / super123@ / 超级管理员</span><br>
+        <span>用户2: campus_admin / campus123@ / 校区管理员</span><br>
+        <span>用户3: student_wang / bbbb2222@ / 学生</span><br>
         <span>用户3: coach_K / cccc3333@ / 教练</span>
          <span class="register-tip">没有账号？
           <span class="register-link" @click="handleToRegister">点击注册</span>
