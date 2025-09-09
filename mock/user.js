@@ -63,6 +63,7 @@ const defaultUsers = {
     phone: '13600136000', // 补充教练电话
     email: 'k_coach@example.com', // 补充教练邮箱
     campus: 'south', // 补充教练所属校区
+    photo: 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif',
     achievements: '2023年市乒乓球比赛冠军' // 教练特有字段
   }
 }

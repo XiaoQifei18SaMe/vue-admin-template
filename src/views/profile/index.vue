@@ -310,14 +310,7 @@ export default {
           }
         ],
         photo: [
-          { required: false, trigger: 'change', validator: (rule, value, callback) => {
-                if (this.isCoach && !value && this.fileList.length === 0) {
-                  callback(new Error('请上传教练照片'))
-                } else {
-                  callback()
-                }
-              }
-          }
+          { required: false, trigger: 'change'}
         ],
         achievements: [
           { required: false, trigger: 'blur', validator: (rule, value, callback) => {
@@ -378,6 +371,7 @@ export default {
         const { data } = response
         this.userInfo = { ...this.userInfo, ...data }
         console.log(this.userInfo.campus)
+        console.log(this.userInfo.avatar)
         this.userInfo.confirmPassword = this.userInfo.password
         // 初始化头像列表
         if (this.userInfo.avatar) {
