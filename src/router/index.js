@@ -101,6 +101,22 @@ export const constantRoutes = [
   //     }
   //   ]
   // },
+  {
+    path: '/profile',
+    component: Layout,
+    hidden: false, // 显示在侧边栏
+    children: [
+      {
+        path: 'index',
+        name: 'Profile',
+        component: () => import('@/views/profile/index'), // 指向个人信息页面
+        meta: {
+          title: '个人信息', // 侧边栏显示的标题
+          icon: 'user', // 侧边栏图标（使用 Element UI 内置图标）
+        }
+      }
+    ]
+  },
 
   {
     path: '/nested',
