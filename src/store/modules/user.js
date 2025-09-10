@@ -59,6 +59,7 @@ const actions = {
         commit('SET_TOKEN', data)
         console.log("login返回" + data)
         setToken(data)
+        this._vm.$message.success('登录成功')
         resolve()
       }).catch(error => {
         reject(error)
@@ -122,6 +123,8 @@ const actions = {
         removeToken() // must remove  token  first
         resetRouter()
         commit('RESET_STATE')
+         // 增加登出成功提示
+        this._vm.$message.success('登出成功，即将返回登录页') // 若在Vue组件中可直接用this.$message
         resolve()
       }).catch(error => {
         reject(error)

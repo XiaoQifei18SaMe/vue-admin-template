@@ -36,7 +36,7 @@ export function login(data) {
 }
 
 export function getInfo(token) {
-  console.log(token)
+  console.log("getInfo携带的token " + token)
   return request({
     url: '/token/info',
     method: 'get',
@@ -44,13 +44,14 @@ export function getInfo(token) {
   })
 }
 
-export function logout() {
+export function logout(data) {
+  console.log("logout携带的token " + data)
   return request({
-    url: '/logout',
-    method: 'post'
+    url: '/token/logout',
+    method: 'post',
+    data: { token: data }  // 包装成JSON对象，键为token
   })
 }
-
 // 添加注册接口
 export function register(data) {
   return request({
