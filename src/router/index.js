@@ -5,6 +5,7 @@ Vue.use(Router)
 
 /* Layout */
 import Layout from '@/layout'
+import { title } from '@/settings'
 
 /**
  * Note: sub-menu only appear when route children.length >= 1
@@ -195,7 +196,25 @@ export const constantRoutes = [
 // 权限路由（需按角色过滤）
 export const asyncRoutes = [
   {
-    path: '/campus',
+    path: '/super_admin/admin_manage',
+    component: Layout,
+    meta: {
+      title: '管理员管理',
+      icon: 'user',
+      roles: ['super_admin']
+    },
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/super_admin/create_admin'),
+        meta: { title: '创建管理员' ,icon: 'user'}
+      }
+
+    ]
+
+  },
+  {
+    path: '/super_admin/school_manage',
     component: Layout,
     meta: { 
       title: '校区管理', 
@@ -205,7 +224,7 @@ export const asyncRoutes = [
     children: [
       { 
         path: '',  // 默认路由
-        component: () => import('@/views/campus/index'), 
+        component: () => import('@/views/super_admin/school_manage'), 
         meta: { title: '校区管理' } 
       }
     ]

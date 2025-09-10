@@ -194,7 +194,7 @@ export default {
             const userInfo = await this.$store.dispatch('user/getInfo')
             
             // 3. 新增：生成权限路由
-            const accessedRoutes = await this.$store.dispatch('permission/generateRoutes', userInfo.roles)
+            const accessedRoutes = await this.$store.dispatch('permission/generateRoutes', userInfo.role)
             
             // 4. 新增：动态添加路由
             this.$router.addRoutes(accessedRoutes)

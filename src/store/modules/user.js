@@ -56,8 +56,9 @@ const actions = {
     return new Promise((resolve, reject) => {
       login(userInfo).then(response => { // 直接传递整个 userInfo
         const { data } = response
-        commit('SET_TOKEN', data.token)
-        setToken(data.token)
+        commit('SET_TOKEN', data)
+        console.log("login返回" + data)
+        setToken(data)
         resolve()
       }).catch(error => {
         reject(error)
@@ -98,12 +99,12 @@ const actions = {
         }
 
         // 3. 从接口返回数据中提取角色信息（关键！）
-        const { name, avatar, role } = data
-        
+        const { username, avatar, role } = data
+        console.log("getinfo返回" + data)
         // 4. 存储角色信息（用于permission.js过滤路由）
         commit('SET_ROLE', role)
         console.log("vuex存储role: " + role)
-        commit('SET_NAME', name)
+        commit('SET_NAME', username)
         commit('SET_AVATAR', avatar)
         
         // 5. 将完整用户信息返回（供登录后调用generateRoutes使用）

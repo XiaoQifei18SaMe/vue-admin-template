@@ -59,7 +59,7 @@ const whiteList = ['/login','/register','/register/pending'] // no redirect whit
 // })
 
 // 修改 vue-admin-template/src/permission.js 的 router.beforeEach 部分
-router.beforeEach(async(to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   NProgress.start()
   document.title = getPageTitle(to.meta.title)
   const hasToken = getToken()
@@ -69,24 +69,33 @@ router.beforeEach(async(to, from, next) => {
       next({ path: '/' })
       NProgress.done()
     } else {
-      const hasGetUserInfo = store.getters.name
+      // 关键修改：同时检查name和role是否存在（避免仅靠name判断的漏洞）
+      const hasGetUserInfo = store.getters.name && store.getters.role
       if (hasGetUserInfo) {
         next()
       } else {
         try {
-          // 1. 获取用户信息（含单个 role）
+          // 1. 获取用户信息（确保后端返回role）
           const userInfo = await store.dispatch('user/getInfo')
-          const { role } = userInfo // 提取单个角色
+          const { role } = userInfo 
+
+          // 2. 新增：校验role是否存在，不存在则抛错进入catch
+          if (!role) {
+            throw new Error('未获取到用户角色信息')
+          }
           
-          // 2. 根据单个角色生成权限路由
+          // 3. 根据角色生成路由
           const accessedRoutes = await store.dispatch('permission/generateRoutes', role)
           
-          // 3. 动态添加路由
+          // 4. 动态添加路由（Vue Router 3用addRoutes，4+用addRoute循环添加）
           router.addRoutes(accessedRoutes)
+          
+          // 5. 避免重复触发守卫：用replace确保不会再次进入当前钩子
           next({ ...to, replace: true })
         } catch (error) {
+          // 出错时清除token，强制跳转登录
           await store.dispatch('user/resetToken')
-          Message.error(error || 'Has Error')
+          Message.error(error.message || '获取用户信息失败，请重新登录')
           next(`/login?redirect=${to.path}`)
           NProgress.done()
         }

@@ -36,8 +36,9 @@ export function login(data) {
 }
 
 export function getInfo(token) {
+  console.log(token)
   return request({
-    url: '/info',
+    url: '/token/info',
     method: 'get',
     params: { token }
   })
@@ -45,7 +46,7 @@ export function getInfo(token) {
 
 export function logout() {
   return request({
-    url: '/vue-admin-template/user/logout',
+    url: '/logout',
     method: 'post'
   })
 }
