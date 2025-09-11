@@ -190,7 +190,7 @@ export const constantRoutes = [
   // },
 
   // 404 page must be placed at the end !!!
-  { path: '*', redirect: '/404', hidden: true }
+  // { path: '*', redirect: '/404', hidden: true }
 ]
 
 // 权限路由（需按角色过滤）
@@ -224,6 +224,18 @@ export const asyncRoutes = [
         meta: { title: '校区管理', icon: 'campus' } 
       }
     ]
+  },
+  {
+    path: '/admin/coach_audit',
+    component: Layout,
+    meta: {
+      roles: ['super_admin','admin']
+    },
+    children: [{
+      path: '',
+      component: () => import('@/views/admin/coach_audit'),
+      meta: { title: '教练审核', icon: 'user' }
+    }]
   },
 
   // 1. 超级管理员专属：校区管理
@@ -263,7 +275,9 @@ export const asyncRoutes = [
         } 
       }
     ]
-  }
+  },
+  // 404 page must be placed at the end !!!
+  { path: '*', redirect: '/404', hidden: true }
 ]
 const createRouter = () => new Router({
   // mode: 'history', // require service support
