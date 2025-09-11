@@ -141,48 +141,33 @@
       <!-- 教练特有字段 -->
       <template v-if="registerForm.role === 'coach'">
         <!-- 教练照片 -->
-        <!-- 移除action，改用http-request自定义请求 -->
-      <el-form-item prop="photo">
-        <span class="svg-container">
+        <el-form-item prop="photo">
+          <span class="svg-container">
             <svg-icon icon-class="photo" />
-        </span>
-        <el-upload
+          </span>
+          <el-upload
             class="upload-demo"
-            :http-request="handleHttpUpload" 
-            :on-success="handlePhotoUpload" 
-            :on-error="handleUploadError" 
-            :on-preview="handlePhotoPreview" 
-            :on-progress="handleUploadProgress"
-            :file-list="fileList" 
-            accept="image/*" 
-            list-type="picture-card" 
+            :file-list="fileList"
+            accept="image/*"
+            list-type="picture-card"
             :before-upload="beforePhotoUpload"
-            :disabled="uploadDisabled"
-        >
-            <i v-if="!uploadLoading" class="el-icon-plus"></i>
-            <el-loading-spinner v-else class="upload-loading"></el-loading-spinner>
-        </el-upload>
-
-        <!-- 进度条和预览弹窗不变 -->
-        <el-progress 
-            v-if="uploadPercentage > 0 && uploadPercentage < 100"
-            :percentage="uploadPercentage" 
-            stroke-width="2" 
-            style="width: 85%; margin-top: 10px;"
-        ></el-progress>
-        <el-dialog :visible.sync="photoDialogVisible" title="照片预览" width="30%">
-            <img width="100%" :src="previewPhotoUrl" alt="教练照片">
-        </el-dialog>
+            :on-remove="handleRemove"
+            :on-change="handleFileChange"  
+            :auto-upload="false"  
+            :limit="1"
+          >
+            <i class="el-icon-plus"></i>
+          </el-upload>
         </el-form-item>
 
-        <!-- 比赛成绩 -->
+        <!-- 个人简介/比赛成绩 -->
         <el-form-item prop="achievements">
           <span class="svg-container">
             <svg-icon icon-class="achievement" />
           </span>
           <el-input
             v-model="registerForm.achievements"
-            placeholder="以往比赛成绩描述"
+            placeholder="个人简介及以往比赛成绩描述"
             type="textarea"
             rows="3"
           />
@@ -208,7 +193,7 @@
 
 <script>
 import { validUsername, validPassword } from '@/utils/validate'
-import { register, uploadFile } from '@/api/user'
+import { register } from '@/api/user'
 
 export default {
   name: 'Register',
@@ -246,38 +231,30 @@ export default {
       }
     }
 
-    // 修改后：年龄验证（选填，填则校验有效性）
-  const validateAge = (rule, value, callback) => {
-    // 1. 若未输入值（不填），直接通过验证（选填逻辑）
-    if (!value) {
-      callback(); // 不填则通过，不报错
-    } 
-    // 2. 若输入了值，先判断是否为有效整数（避免字符串、小数）
-    else if (isNaN(Number(value)) || !Number.isInteger(Number(value))) {
-      callback(new Error('年龄必须是整数'));
-    } 
-    // 3. 输入了有效整数，再按角色判断合理范围（保持场景适配）
-    else {
-      const age = Number(value);
-      let minAge, maxAge = 60; // 所有角色上限统一60岁
-
-      // 按角色动态设下限（学员6岁，教练18岁）
-      if (this.registerForm.role === 'student') {
-        minAge = 6;
-      } else if (this.registerForm.role === 'coach') {
-        minAge = 18;
-      }
-
-      // 范围校验
-      if (age < minAge) {
-        callback(new Error(`${this.registerForm.role === 'student' ? '学员' : '教练'}年龄不能低于${minAge}岁`));
-      } else if (age > maxAge) {
-        callback(new Error(`年龄不能超过${maxAge}岁`));
+    const validateAge = (rule, value, callback) => {
+      if (!value) {
+        callback();
+      } else if (isNaN(Number(value)) || !Number.isInteger(Number(value))) {
+        callback(new Error('年龄必须是整数'));
       } else {
-        callback(); // 验证通过
+        const age = Number(value);
+        let minAge, maxAge = 60;
+
+        if (this.registerForm.role === 'student') {
+          minAge = 6;
+        } else if (this.registerForm.role === 'coach') {
+          minAge = 18;
+        }
+
+        if (age < minAge) {
+          callback(new Error(`${this.registerForm.role === 'student' ? '学员' : '教练'}年龄不能低于${minAge}岁`));
+        } else if (age > maxAge) {
+          callback(new Error(`年龄不能超过${maxAge}岁`));
+        } else {
+          callback();
+        }
       }
-    }
-  };
+    };
 
     const validatePhone = (rule, value, callback) => {
       const reg = /^1[3-9]\d{9}$/
@@ -302,12 +279,9 @@ export default {
         campus: '',
         phone: '',
         email: '',
-        photo: '',
         achievements: '',
-        uploadLoading: false,       // 上传加载状态
-        uploadPercentage: 0,        // 上传进度
-        uploadDisabled: false       // 上传控件是否禁用
       },
+      fileList: [],  // 存储上传的图片文件
       registerRules: {
         role: [
           { required: true, trigger: 'change', message: '请选择注册角色' }
@@ -326,8 +300,8 @@ export default {
         ],
         age: [
             {
-            required: false, // 关键：改为false，允许不填
-            trigger: ['blur', 'change'], // 只有输入值时，失焦/变化才触发校验
+            required: false,
+            trigger: ['blur', 'change'],
             validator: validateAge 
             }
         ],
@@ -340,20 +314,24 @@ export default {
         email: [
           { type: 'email', trigger: 'blur', message: '请输入正确的邮箱地址' }
         ],
-        photo: [
-          { required: true, trigger: 'change', message: '请上传教练照片', validator: (rule, value, callback) => {
-                if (this.registerForm.role === 'coach' && !value) {
-                callback(new Error('请上传教练照片'))
-                } else {
-                callback()
-                }
+       photo: [
+          { 
+            required: true, 
+            trigger: ['change', 'blur'],  // 增加blur触发，确保更多场景下校验
+            message: '请上传教练照片', 
+            validator: (rule, value, callback) => {
+              if (this.registerForm.role === 'coach' && this.fileList.length === 0) {
+                callback(new Error('请上传教练照片'));
+              } else {
+                callback();
+              }
             }
           }
         ],
         achievements: [
-          { required: true, trigger: 'blur', message: '请输入比赛成绩', validator: (rule, value, callback) => {
+          { required: true, trigger: 'blur', message: '请输入个人简介及比赛成绩', validator: (rule, value, callback) => {
                 if (this.registerForm.role === 'coach' && !value) {
-                callback(new Error('请输入比赛成绩'))
+                callback(new Error('请输入个人简介及比赛成绩'))
                 } else {
                 callback()
                 }
@@ -362,18 +340,15 @@ export default {
         ]
       },
       campuses: [
-        { label: '总校区', value: 'main' },
-        { label: '东校区', value: 'east' },
-        { label: '西校区', value: 'west' },
-        { label: '南校区', value: 'south' },
-        { label: '北校区', value: 'north' }
+        { label: '总校区', value: 1 },
+        { label: '东校区', value: 2 },
+        { label: '西校区', value: 3 },
+        { label: '南校区', value: 4 },
+        { label: '北校区', value: 5 }
       ],
       loading: false,
       passwordType: 'password',
       confirmPasswordType: 'password',
-      fileList: [], // 已上传文件列表（原有，保留）
-      photoDialogVisible: false, // 预览弹窗的显示状态（新增）
-      previewPhotoUrl: '' // 预览图片的 URL（新增）
     }
   },
   methods: {
@@ -384,7 +359,6 @@ export default {
         this.confirmPasswordType = this.confirmPasswordType === 'password' ? '' : 'password'
       }
       this.$nextTick(() => {
-        // 保持与登录页一致的聚焦行为
         const inputRef = type === 'password' ? 'password' : 'confirmPassword'
         this.$refs[inputRef]?.focus()
       })
@@ -392,124 +366,114 @@ export default {
 
     handleRoleChange() {
       if (this.registerForm.role === 'student') {
-        this.registerForm.photo = ''
         this.registerForm.achievements = ''
         this.fileList = []
       }
       this.$refs.registerForm.clearValidate()
     },
 
-    // handlePhotoUpload(response, file, fileList) {
-    //   this.registerForm.photo = response.data.url
-    //   this.fileList = fileList
-    // },
-
-    // 核心修改：自定义上传方法（与登录的handleLogin调用方式一致）
-    handleHttpUpload(options) {
-      // 构建FormData（文件上传必须用FormData格式）
-      const formData = new FormData()
-      formData.append('file', options.file) // 'file'为后端接收文件的参数名
-
-      // 调用API层的上传方法（与登录的login方法调用风格一致）
-      uploadFile(formData)
-        .then(response => {
-          // 上传成功：调用el-upload的success回调
-          options.onSuccess(response)
-        })
-        .catch(error => {
-          // 上传失败：调用el-upload的error回调
-          options.onError(error)
-        })
-    },
     // 上传前校验
     beforePhotoUpload(file) {
-      // 校验格式：仅允许 jpg/png/gif
-      const isImage = file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/gif'
-      // 校验大小：不超过 2MB
-      const isLt2M = file.size / 1024 / 1024 < 2
-
-      if (!isImage) {
-        this.$message.error('仅支持 JPG、PNG、GIF 格式的图片！')
-        return false
-      }
-      if (!isLt2M) {
-        this.$message.error('图片大小不能超过 2MB！')
-        return false
-      }
-      
-      // 开始上传前的准备
-      this.uploadLoading = true
-      this.uploadPercentage = 0
-      this.uploadDisabled = true
-      return true
+      const isImage = file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/gif';
+      const isLt2M = file.size / 1024 / 1024 < 2;
+      if (!isImage) this.$message.error('仅支持 JPG、PNG、GIF 格式的图片！');
+      if (!isLt2M) this.$message.error('图片大小不能超过 2MB！');
+      return isImage && isLt2M;
     },
-
-    // 上传进度处理
-    handleUploadProgress(event, file, fileList) {
-      this.uploadPercentage = Math.floor(event.percent * 100)
+    
+      handleFileChange(file, fileList) {
+      this.fileList = fileList;
+      // 手动触发photo字段的验证
+      this.$refs.registerForm.validateField('photo');
     },
-
-    // 上传成功处理
-    handlePhotoUpload(response, file, fileList) {
-      this.uploadLoading = false
-      this.uploadDisabled = false
-      
-      if (response.code === 20000) {
-        this.registerForm.photo = response.data.url
-        this.fileList = fileList
-        this.$message.success(response.message || '照片上传成功！')
-      } else {
-        this.uploadPercentage = 0
-        this.$message.error('照片上传失败：' + (response.message || '未知错误'))
-      }
-    },
-
-    // 上传失败处理
-    handleUploadError(error, file, fileList) {
-      this.uploadLoading = false
-      this.uploadDisabled = false
-      this.uploadPercentage = 0
-      this.$message.error('上传失败，请稍后重试')
-      console.error('上传错误详情：', error)
-    },
-
-    // 移除已上传文件
+    // 优化handleRemove方法，确保验证触发
     handleRemove(file, fileList) {
-      this.fileList = fileList
-      if (fileList.length === 0) {
-        this.registerForm.photo = ''
-      }
+      this.fileList = fileList;
+      this.$refs.registerForm.validateField('photo');
     },
 
     handleRegister() {
       this.$refs.registerForm.validate(valid => {
         if (valid) {
-          this.loading = true
-          register(this.registerForm).then(() => {
-            this.loading = false
-            if (this.registerForm.role === 'student') {
-              this.$message.success('注册成功，请登录')
-              this.$router.push('/login')
-            } else {
-              this.$message.success('注册申请已提交，请等待管理员审核')
-              this.$router.push('/register/pending')
+          this.loading = true;
+          const isMale = this.registerForm.gender === 'male' ? true : false;
+
+          // 构建基础数据
+          const baseData = {
+            username: this.registerForm.username,
+            password: this.registerForm.password,
+            name: this.registerForm.realName,
+            isMale: isMale,
+            age: this.registerForm.age ? Number(this.registerForm.age) : null,
+            schoolId: this.registerForm.campus,
+            phone: this.registerForm.phone,
+            email: this.registerForm.email || ''
+          };
+
+          // 根据角色选择不同的请求方式和接口
+          if (this.registerForm.role === 'student') {
+            // 学员注册：使用JSON格式
+            // 学员注册：使用JSON格式数据
+            register(baseData, 'student')
+                .then(response => {
+                  this.loading = false;
+                  // 统一通过根节点code判断（与教练注册逻辑一致）
+                  if (response.code === 20000) {
+                    this.$message.success('注册成功，请登录');
+                    this.$router.push('/login');
+                  } else {
+                    this.$message.error(response.message || response || '注册失败');
+                  }
+                })
+                .catch(error => {
+                  this.$message.error(error.message || '注册失败');
+                  this.loading = false;
+                });
+          } else if (this.registerForm.role === 'coach') {
+            // 教练注册：使用FormData格式同时提交数据和文件
+            if (this.fileList.length === 0) {
+              this.$message.error('请上传教练照片');
+              this.loading = false;
+              return;
             }
-          }).catch(error => {
-            this.$message.error(error.message || '注册失败')
-            this.loading = false
-          })
-        } else {
-          console.log('表单验证失败')
-          return false
+
+            const formData = new FormData();
+            // 追加基础字段
+            Object.keys(baseData).forEach(key => {
+              if (baseData[key] !== null && baseData[key] !== undefined) {
+                formData.append(key, baseData[key]);
+              }
+            });
+            // 追加教练特有字段
+            formData.append('description', this.registerForm.achievements);
+            // 追加图片文件
+            formData.append('file', this.fileList[0].raw);
+
+             register(formData, 'coach')
+                .then(response => {
+                  this.loading = false;
+                  // 1. 直接访问response.code（根节点字段）
+                  if (response.code === 20000) {
+                    this.$message.success('注册申请已提交，请等待管理员审核');
+                    this.$router.push('/register/pending');
+                  } else {
+                    // 2. 直接访问response.message（根节点字段），并增加空值保护
+                    this.$message.error(response.message || '注册失败');
+                  }
+                })
+                .catch(error => {
+                  this.$message.error(error.message || '注册失败');
+                  this.loading = false;
+                });
+          }
         }
-      })
+      });
     }
   }
 }
 </script>
 
 <style lang="scss">
-/* 修复input 背景不协调 和光标变色，与登录页保持一致 */
 $bg:#283443;
 $light_gray:#fff;
 $cursor: #fff;
@@ -520,7 +484,6 @@ $cursor: #fff;
   }
 }
 
-/* reset element-ui css，与登录页保持一致 */
 .register-container {
   .el-input {
     display: inline-block;
@@ -551,7 +514,6 @@ $cursor: #fff;
     color: #454545;
   }
 
-  /* 修复el-select下拉三角形位置，与登录页一致 */
   .el-select {
     width: 85%;
     
@@ -570,7 +532,7 @@ $cursor: #fff;
 $bg:#2d3a4b;
 $dark_gray:#889aa4;
 $light_gray:#eee;
-$primary-color: #409EFF; // 复用element-ui主题色，保持风格统一
+$primary-color: #409EFF;
 
 .register-container {
   min-height: 100%;
@@ -580,9 +542,9 @@ $primary-color: #409EFF; // 复用element-ui主题色，保持风格统一
     
   .register-form {
     position: relative;
-    width: 520px; // 与登录页保持一致的宽度
+    width: 520px;
     max-width: 100%;
-    padding: 160px 35px 0; // 与登录页保持一致的顶部距离
+    padding: 160px 35px 0;
     margin: 0 auto;
     overflow: hidden;
   }
@@ -591,43 +553,20 @@ $primary-color: #409EFF; // 复用element-ui主题色，保持风格统一
     display: none !important;
   }
 
-  
-
-//   // 统一表单项目样式，与登录页保持一致
-//   .el-form-item {
-//     display: flex;
-//     align-items: center;
-//     border: 1px solid rgba(255, 255, 255, 0.1);
-//     background: rgba(0, 0, 0, 0.1);
-//     border-radius: 5px;
-//     margin-bottom: 15px; // 与登录页保持一致的间距
-//     padding: 3px 5px;
-    
-//     // 输入框容器占满剩余空间
-//     .el-input,
-//     .el-select,
-//     .upload-demo {
-//       //flex: 1;
-//       width: 85%;
-//       margin: 0;
-//       padding: 5px 0;
-//     }
-//   }
-
   .tips {
     font-size: 14px;
     color: #fff;
     text-align: center;
     margin-bottom: 10px;
-    line-height: 1.8; // 与登录页保持一致的行高
+    line-height: 1.8;
 
     .login-link {
-      color: $primary-color; // 使用主题色，与登录页一致
+      color: $primary-color;
       margin-left: 5px;
       cursor: pointer;
       
       &:hover {
-        text-decoration: underline; // 与登录页保持一致的hover效果
+        text-decoration: underline;
       }
     }
   }
@@ -647,7 +586,7 @@ $primary-color: #409EFF; // 复用element-ui主题色，保持风格统一
     .title {
       font-size: 26px;
       color: $light_gray;
-      margin: 0px auto 40px auto; // 与登录页保持一致的标题间距
+      margin: 0px auto 40px auto;
       text-align: center;
       font-weight: bold;
     }
@@ -656,7 +595,7 @@ $primary-color: #409EFF; // 复用element-ui主题色，保持风格统一
   .show-pwd {
     position: absolute;
     right: 40px;
-    top: 7px; // 与登录页保持一致的位置
+    top: 7px;
     font-size: 16px;
     color: $dark_gray;
     cursor: pointer;
@@ -664,34 +603,27 @@ $primary-color: #409EFF; // 复用element-ui主题色，保持风格统一
     z-index: 1;
   }
 
-  // 上传组件样式调整，融入整体风格
-//   .upload-demo {
-//     padding: 5px 0;
-    
-//     .el-button {
-//       width: 100%;
-//       text-align: left;
-//       padding-left: 15px;
-//       background: transparent;
-//       border: 1px solid rgba(255, 255, 255, 0.2);
-      
-//       &:hover {
-//         background: rgba(255, 255, 255, 0.1);
-//       }
-//     }
-//   }
+  ::v-deep .el-upload-list__item {
+  position: relative;
+}
 
-//   // 文本域样式调整，与整体风格统一
-//   .el-textarea {
-//     width: 100% !important;    
-//     textarea {
-//       background: transparent;
-//       border: 0;
-//       color: $light_gray;
-//       padding: 12px 15px;
-//       resize: none;
-//       height: 100px !important;
-//     }
-//   }
+::v-deep .el-upload-list__item:hover .el-upload-list__item-actions {
+  display: flex !important;
+}
+
+/* 确保替换按钮显示 */
+::v-deep .el-upload-list__item-actions {
+  display: none;
+  gap: 10px;
+}
+
+::v-deep .el-upload-list__item-actions .el-icon-delete {
+  color: #f56c6c;
+}
+
+::v-deep .el-upload-list__item-actions .el-icon-refresh {
+  color: #409eff;
+  cursor: pointer;
+}
 }
 </style>
