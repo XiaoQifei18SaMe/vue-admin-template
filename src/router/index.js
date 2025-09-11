@@ -199,15 +199,13 @@ export const asyncRoutes = [
     path: '/super_admin/admin_manage',
     component: Layout,
     meta: {
-      title: '管理员管理',
-      icon: 'user',
       roles: ['super_admin']
     },
     children: [
       {
         path: '',
-        component: () => import('@/views/super_admin/create_admin'),
-        meta: { title: '创建管理员' ,icon: 'user'}
+        component: () => import('@/views/super_admin/admin_manage'),
+        meta: { title: '管理员管理' ,icon: 'user'}
       }
 
     ]
@@ -217,15 +215,13 @@ export const asyncRoutes = [
     path: '/super_admin/school_manage',
     component: Layout,
     meta: { 
-      title: '校区管理', 
-      icon: 'campus',
       roles: ['super_admin'] // 仅超级管理员可见
     },
     children: [
       { 
         path: '',  // 默认路由
         component: () => import('@/views/super_admin/school_manage'), 
-        meta: { title: '校区管理' } 
+        meta: { title: '校区管理', icon: 'campus' } 
       }
     ]
   },

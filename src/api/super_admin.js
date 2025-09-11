@@ -1,5 +1,13 @@
 import request from '@/utils/request'
 
+//获取管理员列表
+export function getAdmins() {
+    return request({
+        url: '/super_admin/admins',
+        method: 'get'
+    })
+}
+
 // 创建管理员
 export function createAdmin(data) {
   return request({
@@ -8,6 +16,22 @@ export function createAdmin(data) {
     data
   })
 }
+
+export function updateAdmin(data) {
+    return request({
+        url: '/super_admin/edit_admin',
+        method: 'post',
+        data
+    })
+}
+
+export function deleteAdmin(id) {
+    return request({
+        url: `/super_admin/delete_admin/${id}`,
+        method: 'delete'
+    })
+}
+
 
 // 获取所有校区列表
 export function getSchools() {
