@@ -65,4 +65,34 @@ export function getSchools() {
       url: `/super_admin/delete_school/${id}`,
       method: 'delete'
     })
-  }
+}
+  
+
+
+
+export function getAllUncertifiedCoaches() {
+  return request({
+    url: '/super_admin/get_all_uncertified_coaches',
+    method: 'get'
+  })
+}
+
+export function getSuperCoachDetail(coachId) {
+  return request({
+    url: '/super_admin/get_super_coach_detail',
+    method: 'get',
+    params: {coachId}
+  })
+}
+
+export function superCertifyCoach(coachId, isAccepted, level) {
+  return request({
+    url: '/super_admin/super_certify_coach',
+    method: 'post',
+    data: {
+      coachId,
+      isAccepted,
+      level
+    }
+  })
+}

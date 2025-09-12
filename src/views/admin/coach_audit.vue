@@ -2,6 +2,9 @@
   <div class="audit-container">
     <div class="page-header">
       <h2>教练审核管理</h2>
+      <div class="role-indicator" v-if="role === 'super_admin'">
+        <el-tag type="warning">超级管理员模式</el-tag>
+      </div>
     </div>
 
     <!-- 加载状态 -->
@@ -111,6 +114,19 @@
                     {{ currentCoach.description || '无' }}
                   </div>
                 </div>
+
+                <div v-if="showDetail" class="detail-item">
+                  <span class="item-label">教练等级</span>
+                  <el-select 
+                    v-model="selectedLevel" 
+                    placeholder="请选择教练等级"
+                    class="level-select"
+                  >
+                    <el-option label="初级教练员" value="10"></el-option>
+                    <el-option label="中级教练员" value="100"></el-option>
+                    <el-option label="高级教练员" value="1000"></el-option>
+                  </el-select>
+                </div>
               </div>
             </el-col>
           </el-row>
@@ -128,12 +144,18 @@
 </template>
 
 <script>
+// 导入API，区分管理员和超级管理员接口
 import { getUncertifiedCoaches, getCoachDetail, certifyCoach } from '@/api/admin';
+import { getAllUncertifiedCoaches, getSuperCoachDetail, superCertifyCoach } from '@/api/super_admin';
 import { Message } from 'element-ui';
-import { getToken } from '@/utils/auth'
+import { getToken } from '@/utils/auth';
+import { mapGetters } from 'vuex'; // 导入vuex的辅助函数
 
 export default {
-  name: 'AdminCoachAudit',
+  name: 'CoachAudit', // 修改组件名称，使其更通用
+  computed: {
+    ...mapGetters(['role']) // 从vuex获取用户角色
+  },
   data() {
     return {
       coachList: [],
@@ -143,14 +165,15 @@ export default {
       currentCoachId: null,
       currentCoach: null,
       detailLoading: false,
-      token: '' // 保存token的变量
+      token: '',
+      selectedLevel: null
     };
   },
   created() {
-    console.log('页面已创建，开始获取教练列表')
-    this.token = getToken(); // 保存token到实例变量
+    console.log('页面已创建，用户角色:', this.role);
+    this.token = getToken();
     if (this.token) {
-      this.fetchCoachList(); // 不需要重复传递token
+      this.fetchCoachList();
     } else {
       Message.error('未获取到登录状态，请重新登录');
     }
@@ -159,13 +182,17 @@ export default {
     async fetchCoachList() {
       this.loading = true;
       try {
-        // 确保请求时正确传递token
-        const res = await getUncertifiedCoaches(this.token);
+        let res;
+        // 根据用户角色选择不同的API
+        if (this.role === 'super_admin') {
+          res = await getAllUncertifiedCoaches();
+        } else {
+          res = await getUncertifiedCoaches(this.token);
+        }
         this.coachList = res.data || [];
       } catch (err) {
         this.errorMsg = err.message || '获取教练列表失败';
         Message.error(this.errorMsg);
-        // 打印详细错误信息以便调试
         console.error('获取教练列表错误:', err);
       } finally {
         this.loading = false;
@@ -176,10 +203,17 @@ export default {
       this.currentCoachId = coachId;
       this.detailLoading = true;
       this.currentCoach = null;
+      this.selectedLevel = null;
       this.showDetail = true;
 
       try {
-        const res = await getCoachDetail(coachId);
+        let res;
+        // 根据用户角色选择不同的API
+        if (this.role === 'super_admin') {
+          res = await getSuperCoachDetail(coachId);
+        } else {
+          res = await getCoachDetail(coachId);
+        }
         this.currentCoach = res.data;
       } catch (err) {
         Message.error(err.message || '获取教练详情失败');
@@ -193,19 +227,36 @@ export default {
         Message.warning('未获取到教练ID');
         return;
       }
+      
+      // 如果是通过审核但未选择等级，提示用户选择
+      if (isAccepted && !this.selectedLevel) {
+        Message.warning('请选择教练等级');
+        return;
+      }
 
       try {
-        // 审核操作
-        await certifyCoach(this.currentCoachId, isAccepted);
-        Message.success(isAccepted ? '审核通过' : '已拒绝');
+        // 根据用户角色选择不同的API
+        if (this.role === 'super_admin') {
+          await superCertifyCoach(
+            this.currentCoachId, 
+            isAccepted, 
+            isAccepted ? Number(this.selectedLevel) : 0
+          );
+        } else {
+          await certifyCoach(
+            this.currentCoachId, 
+            isAccepted, 
+            isAccepted ? Number(this.selectedLevel) : 0
+          );
+        }
         
-        // 关闭弹窗
+        this.$message.success("审核操作成功");
         this.showDetail = false;
         
-        // 刷新列表前先从本地列表中移除已审核的教练，提升用户体验
+        // 本地移除已审核教练
         this.coachList = this.coachList.filter(item => item.id !== this.currentCoachId);
         
-        // 重新获取最新列表，确保数据准确性
+        // 刷新列表
         setTimeout(() => {
           this.fetchCoachList();
         }, 300);
@@ -224,7 +275,7 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-/* 样式保持不变 */
+/* 原有样式保持不变，新增角色标识样式 */
 .audit-container {
   padding: 20px;
   max-width: 1200px;
@@ -233,6 +284,10 @@ export default {
 
 .page-header {
   margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  
   h2 {
     margin: 0;
     font-size: 18px;
@@ -240,6 +295,11 @@ export default {
   }
 }
 
+.role-indicator {
+  margin-top: 5px;
+}
+
+/* 其他样式保持不变 */
 .empty {
   text-align: center;
   padding: 40px;
@@ -276,7 +336,7 @@ export default {
   padding: 12px 16px;
   transition: all 0.3s ease;
   display: flex;
-  align-items: flex-start; /* 确保内容顶部对齐 */
+  align-items: flex-start;
   
   &:hover {
     background-color: rgba(224, 236, 255, 0.9);
@@ -285,7 +345,7 @@ export default {
 }
 
 .item-label {
-  flex-shrink: 0; /* 防止标签被压缩 */
+  flex-shrink: 0;
   width: 90px;
   font-weight: 600;
   color: #1890ff;
@@ -299,24 +359,28 @@ export default {
   line-height: 1.5;
 }
 
-// 个人描述特殊样式
 .description-item {
-  align-items: flex-start; /* 顶部对齐 */
-  padding-bottom: 16px; /* 增加底部内边距 */
+  align-items: flex-start;
+  padding-bottom: 16px;
 }
 
 .description-content {
   color: #333;
   line-height: 1.6;
-  flex-grow: 1; /* 占据剩余空间 */
-  word-break: break-word; /* 自动换行 */
-  padding-top: 2px; /* 微调对齐 */
+  flex-grow: 1;
+  word-break: break-word;
+  padding-top: 2px;
 }
 
 .error {
   text-align: center;
   padding: 40px;
   color: #f5222d;
+}
+
+.level-select {
+  width: 200px;
+  margin-top: 4px;
 }
 </style>
     

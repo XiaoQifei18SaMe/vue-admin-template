@@ -19,13 +19,14 @@ export function getCoachDetail(coachId) {
 }
 
 // 审核教练（通过/拒绝）
-export function certifyCoach(coachId, isAccepted) {
+export function certifyCoach(coachId, isAccepted, level) {
   return request({
     url: '/admin/certify_coach',
     method: 'post',
     data: {
       coachId,
-      isAccepted
+      isAccepted,
+      level
     }
   })
 }
