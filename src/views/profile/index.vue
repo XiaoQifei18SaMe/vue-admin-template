@@ -11,7 +11,7 @@
     <!-- 加载状态 -->
     <div v-loading="loading" class="loading-container">
       <el-card class="profile-card">
-        <!-- 头像上传区域 - 整合展示与上传功能 -->
+        <!-- 头像上传区域 -->
         <div class="form-item">
           <div class="item-label">个人头像</div>
           <div class="item-content">
@@ -23,22 +23,35 @@
               accept="image/*"
               list-type="picture-card"
               :before-upload="beforeAvatarUpload"
-              :disabled="avatarUploadDisabled || avatarUrl"
+              :disabled="avatarLoading || avatarUploadDisabled" 
               limit="1"
               :on-exceed="handleUploadExceed"
             >
-            <div v-if="avatarUrl || avatarLoading">
-              <el-loading-spinner v-if="avatarLoading" class="upload-loading"></el-loading-spinner>
-              <!-- 关键修改：拼接完整头像URL + 错误兜底 -->
-              <img 
-                v-else 
-                :src="`http://localhost:8080/user-avatars/${avatarUrl}`" 
-                class="avatar-img" 
-                @error="handleAvatarError"  
-              />
-            </div>
-            <i v-else class="el-icon-plus avatar-upload-icon"></i>
-          </el-upload>
+              <!-- 1. 头像预览/删除层（hover显示删除图标） -->
+              <div 
+                v-if="!isAvatarDeleted || avatarLoading || isAvatarDeleted"  
+                class="avatar-preview-container"
+              >
+                <!-- 加载中 -->
+                <el-loading-spinner v-if="avatarLoading" class="upload-loading"></el-loading-spinner>
+                <!-- 头像预览（修改src逻辑） -->
+                <img 
+                  v-else 
+                  :src="avatarUrl ? `http://localhost:8080/user-avatars/${avatarUrl}` : '/default-avatar.gif'"  
+                  class="avatar-img" 
+                  @error="handleAvatarError"  
+                />
+                <!-- 删除图标（hover显示） -->
+                <div class="avatar-delete-icon" @click.stop="handleAvatarDelete">
+                  <i class="el-icon-delete"></i>
+                </div>
+              </div>
+
+              <!-- 2. 无头像/已删除时，显示「上传加号」 -->
+              <div v-else class="avatar-upload-placeholder">
+                <i class="el-icon-plus avatar-upload-icon"></i>
+              </div>
+            </el-upload>
 
             <el-progress 
               v-if="avatarUploadPercentage > 0 && avatarUploadPercentage < 100"
@@ -49,136 +62,130 @@
           </div>
         </div>
 
-        <!-- 基本信息区域 -->
-        <form class="profile-form" ref="profileForm">
+        <!-- 关键修改：将form改为el-form并绑定规则 -->
+        <el-form 
+          class="profile-form" 
+          ref="profileForm" 
+          :model="userInfo" 
+          :rules="formRules"
+          label-width="100px"
+        >
           <!-- 用户名 -->
-          <div class="form-item">
-            <div class="item-label">用户名</div>
-            <div class="item-content">
-              <el-input v-model="userInfo.username" :disabled="true" />
-            </div>
-          </div>
+          <el-form-item label="用户名" prop="username">
+            <el-input v-model="userInfo.username" :disabled="true" />
+          </el-form-item>
 
           <!-- 密码（可选修改） -->
-          <div class="form-item">
-            <div class="item-label">密码</div>
-            <div class="item-content">
-              <el-input
-                :key="passwordType"
-                v-model="userInfo.password"
-                :type="passwordType"
-                placeholder="请输入新密码（8-16位，包含字母、数字和特殊字符，不修改请留空）"
-              />
-              <span class="show-pwd" @click="togglePasswordVisibility('password')">
-                <svg-icon :icon-class="passwordType === 'password' ? 'eye' : 'eye-open'" />
-              </span>
-            </div>
-          </div>
+          <el-form-item label="密码" prop="password">
+            <el-input
+              :key="passwordType"
+              v-model="userInfo.password"
+              :type="passwordType"
+              placeholder="请输入新密码（8-16位，包含字母、数字和特殊字符，不修改请留空）"
+            />
+            <span class="show-pwd" @click="togglePasswordVisibility('password')">
+              <svg-icon :icon-class="passwordType === 'password' ? 'eye' : 'eye-open'" />
+            </span>
+          </el-form-item>
 
           <!-- 确认密码 -->
-          <div class="form-item">
-            <div class="item-label">确认密码</div>
-            <div class="item-content">
-              <el-input
-                :key="confirmPasswordType"
-                v-model="userInfo.confirmPassword"
-                :type="confirmPasswordType"
-                placeholder="请再次输入密码"
-              />
-              <span class="show-pwd" @click="togglePasswordVisibility('confirmPassword')">
-                <svg-icon :icon-class="confirmPasswordType === 'password' ? 'eye' : 'eye-open'" />
-              </span>
-            </div>
-          </div>
+          <el-form-item label="确认密码" prop="confirmPassword">
+            <el-input
+              :key="confirmPasswordType"
+              v-model="userInfo.confirmPassword"
+              :type="confirmPasswordType"
+              placeholder="请再次输入密码"
+            />
+            <span class="show-pwd" @click="togglePasswordVisibility('confirmPassword')">
+              <svg-icon :icon-class="confirmPasswordType === 'password' ? 'eye' : 'eye-open'" />
+            </span>
+          </el-form-item>
 
           <!-- 真实姓名 -->
-          <div class="form-item">
-            <div class="item-label">真实姓名</div>
-            <div class="item-content">
-              <el-input v-model="userInfo.name" />
-            </div>
-          </div>
+          <el-form-item label="真实姓名" prop="name">
+            <el-input v-model="userInfo.name" />
+          </el-form-item>
 
           <!-- 性别 -->
-          <div class="form-item">
-            <div class="item-label">性别</div>
-            <div class="item-content">
-              <el-select v-model="userInfo.gender" placeholder="请选择性别">
-                <el-option label="男" value="male" />
-                <el-option label="女" value="female" />
-              </el-select>
-            </div>
-          </div>
+          <el-form-item label="性别" prop="gender">
+            <el-select v-model="userInfo.gender" placeholder="请选择性别">
+              <el-option label="男" value="male" />
+              <el-option label="女" value="female" />
+            </el-select>
+          </el-form-item>
 
           <!-- 年龄 -->
-          <div class="form-item">
-            <div class="item-label">年龄</div>
-            <div class="item-content">
-              <el-input v-model="userInfo.age" type="number" min="0" max="120" />
-            </div>
-          </div>
+          <el-form-item label="年龄" prop="age">
+            <el-input v-model="userInfo.age" type="number" min="0" max="120" />
+          </el-form-item>
 
           <!-- 电话 -->
-          <div class="form-item">
-            <div class="item-label">电话</div>
-            <div class="item-content">
-              <el-input v-model="userInfo.phone" type="tel" />
-            </div>
-          </div>
+          <el-form-item label="电话" prop="phone">
+            <el-input v-model="userInfo.phone" type="tel" />
+          </el-form-item>
 
           <!-- 邮箱 -->
-          <div class="form-item">
-            <div class="item-label">邮箱</div>
-            <div class="item-content">
-              <el-input v-model="userInfo.email" type="email" />
-            </div>
-          </div>
+          <el-form-item label="邮箱" prop="email">
+            <el-input v-model="userInfo.email" type="email" />
+          </el-form-item>
 
           <!-- 校区（针对管理员、教练、学生） -->
-          <div class="form-item" v-if="showCampusField">
-            <div class="item-label">所属校区</div>
-            <div class="item-content">
-              <el-select v-model="userInfo.campus" placeholder="请选择校区">
-                <el-option 
-                  v-for="campus in campuses" 
-                  :key="campus.value" 
-                  :label="campus.label" 
-                  :value="campus.value" 
-                />
-              </el-select>
-            </div>
-          </div>
+          <el-form-item label="所属校区" prop="campus" v-if="showCampusField">
+            <el-select v-model="userInfo.campus" placeholder="请选择校区">
+              <el-option 
+                v-for="campus in campuses" 
+                :key="campus.value" 
+                :label="campus.label" 
+                :value="campus.value" 
+              />
+            </el-select>
+          </el-form-item>
 
           <!-- 教练特有字段 -->
           <template v-if="isCoach">
-            <!-- 教练照片 - 整合展示与上传功能 -->
+          
+            <!-- 教练照片 -->
             <div class="form-item">
               <div class="item-label">教练照片</div>
               <div class="item-content">
-               <el-upload
-                  class="avatar-uploader"
+                <el-upload
+                  class="photo-uploader" 
                   :http-request="handlePhotoUpload" 
                   :on-success="handlePhotoSuccess" 
                   :on-error="handleUploadError" 
                   accept="image/*" 
                   list-type="picture-card" 
                   :before-upload="beforePhotoUpload"
-                  :disabled="photoUploadDisabled || coachPhotoUrl"
+                  :disabled="photoLoading || photoUploadDisabled" 
                   limit="1"
                   :on-exceed="handleUploadExceed"
-              >
-                <div v-if="coachPhotoUrl || photoLoading">
-                  <el-loading-spinner v-if="photoLoading" class="upload-loading"></el-loading-spinner>
-                  <!-- 关键修改：复用教练照片URL规则 + 错误兜底 -->
-                  <img 
-                    v-else 
-                    :src="`http://localhost:8080/coach-photos/${coachPhotoUrl}`" 
-                    class="avatar-img" 
-                    @error="handlePhotoError"  
-                  />
-                </div>
-            <i v-else class="el-icon-plus avatar-upload-icon"></i>
-          </el-upload>
+                >
+                  <!-- 1. 教练照片预览/删除层（hover显示删除图标） -->
+                  <div 
+                    v-if="(coachPhotoUrl && !isPhotoDeleted) || photoLoading" 
+                    class="photo-preview-container" 
+                  >
+                    <!-- 加载中 -->
+                    <el-loading-spinner v-if="photoLoading" class="upload-loading"></el-loading-spinner>
+                    <!-- 教练照片预览 -->
+                    <img 
+                      v-else 
+                      :src="`http://localhost:8080/coach-photos/${coachPhotoUrl}`" 
+                      class="avatar-img"
+                      @error="handlePhotoError"  
+                    />
+                    <!-- 教练照片删除图标（hover显示） -->
+                    <div class="photo-delete-icon" @click.stop="handlePhotoDelete"> <!-- 改类名+绑定删除方法 -->
+                      <i class="el-icon-delete"></i>
+                    </div>
+                  </div>
+
+                  <!-- 2. 无照片/已删除时，显示「上传加号」 -->
+                  <div v-else class="photo-upload-placeholder"> <!-- 改类名：适配教练照片占位样式 -->
+                    <i class="el-icon-plus avatar-upload-icon"></i> <!-- 复用加号图标样式 -->
+                  </div>
+                </el-upload>
+
 
                 <el-progress 
                   v-if="photoUploadPercentage > 0 && photoUploadPercentage < 100"
@@ -188,19 +195,17 @@
                 ></el-progress>
               </div>
             </div>
+          
 
             <!-- 比赛成绩 -->
-            <div class="form-item">
-              <div class="item-label">比赛成绩</div>
-              <div class="item-content">
-                <el-input
-                  v-model="userInfo.achievements"
-                  placeholder="请输入您的比赛成绩"
-                  type="textarea"
-                  rows="3"
-                />
-              </div>
-            </div>
+            <el-form-item label="比赛成绩" prop="description">
+              <el-input
+                v-model="userInfo.description"
+                placeholder="请输入您的比赛成绩"
+                type="textarea"
+                rows="3"
+              />
+            </el-form-item>
           </template>
 
           <!-- 操作按钮 -->
@@ -219,19 +224,21 @@
               取消
             </el-button>
           </div>
-        </form>
+        </el-form>
       </el-card>
     </div>
   </div>
 </template>
 
 <script>
-import { getInfo } from '@/api/user'
-import { uploadFile } from '@/api/user'
+// 引入必要的API
+import { getInfo, uploadAvatar, uploadCoachPhoto } from '@/api/user'
 import { validPhone, validUsername, validPassword} from '@/utils/validate'
+
 export default {
   name: 'Profile',
   data() {
+    // 验证规则保持不变
     const validateUsername = (rule, value, callback) => {
       if (!value) {
         callback(new Error('请输入用户名'))
@@ -294,17 +301,17 @@ export default {
       // 用户信息
       userInfo: {
         username: '',
-        password: '',       // 密码字段（可选修改）
-        confirmPassword: '', // 确认密码字段
+        password: '',
+        confirmPassword: '',
         name: '',
         gender: '',
         age: '',
         phone: '',
         email: '',
         campus: '',
-        avatar: '', // 头像字段
-        photo: '',  // 教练照片
-        achievements: ''
+        avatar: '',
+        photoPath: '',  // 修正字段名与后端一致
+        description: ''
       },
       // 密码显示类型
       passwordType: 'password',
@@ -345,33 +352,36 @@ export default {
         ],
         avatar: [
           { 
-            required: true, 
+            required: false, // 明确设为非必填
             trigger: 'change', 
-            message: '请上传个人头像', 
-            validator: (rule, value, callback) => {
-              // 已有头像或已上传新头像都算有效
-              if (!value && !this.avatarUrl) {
-                callback(new Error('请上传个人头像'))
-              } else {
-                callback()
-              }
-            }
+            message: '头像可选，若上传请选择有效图片' // 可选提示，非强制
           }
         ],
-        photo: [
+        // 2. 教练照片规则：强化「删除后必须上传」的校验
+        photoPath: [
           { 
-            required: this.isCoach, 
-            trigger: 'change',
+            required: this.isCoach, // 仅教练角色需要校验
+            trigger: ['change', 'blur', 'submit'], // 多触发时机，确保删除后立即校验
             validator: (rule, value, callback) => {
-              if (this.isCoach && !value && !this.coachPhotoUrl) {
-                callback(new Error('请上传教练照片'))
+              // 逻辑：教练角色下，若「已删除原有照片」或「从未上传过照片」→ 强制上传
+              console.log("isCoach " + this.isCoach);
+              console.log("isDel " + this.isPhotoDeleted);
+              if (this.isCoach) {
+                // 已删除原有照片：isPhotoDeleted=true（无论是否有旧图）
+                // 从未上传过：无表单值（value为空）且无预览地址（coachPhotoUrl为空）
+                if (this.isPhotoDeleted || (!value && !this.coachPhotoUrl)) {
+                  callback(new Error('教练照片不能为空，请上传新照片'));
+                } else {
+                  callback();
+                }
               } else {
-                callback()
+                console.log("不校验？？？？？")
+                callback(); // 非教练角色，不校验
               }
             }
           }
         ],
-        achievements: [
+        description: [
           { required: this.isCoach, trigger: 'blur', validator: (rule, value, callback) => {
                 if (this.isCoach && !value) {
                   callback(new Error('请输入比赛成绩'))
@@ -385,14 +395,16 @@ export default {
       // 头像上传相关
       avatarUrl: '',
       avatarUploadPercentage: 0,
-      avatarLoading: false,       // 头像上传独立loading
-      avatarUploadDisabled: false, // 头像上传禁用状态
+      avatarLoading: false,
+      avatarUploadDisabled: false,
+      isAvatarDeleted: false, // 新增：标记头像是否被临时删除
       
       // 教练照片上传相关
       coachPhotoUrl: '',
-      photoLoading: false,        // 照片上传独立loading
+      photoLoading: false,
       photoUploadPercentage: 0,
-      photoUploadDisabled: false,  // 照片上传禁用状态
+      photoUploadDisabled: false,
+      isPhotoDeleted: false, // 新增：标记教练照片是否被临时删除
       
       // 提交状态
       submitLoading: false,
@@ -400,11 +412,9 @@ export default {
     }
   },
   computed: {
-    // 当前用户角色信息（从Vuex获取）
     currentUser() {
-      return this.$store.getters.userInfo || this.$store.state.user // 兼容不同存储方式
+      return this.$store.getters.userInfo || this.$store.state.user
     },
-    // 角色标签文本
     roleLabel() {
       const roleMap = {
         'super_admin': '超级管理员',
@@ -414,7 +424,6 @@ export default {
       }
       return roleMap[this.currentUser.role] || '未知角色'
     },
-    // 角色标签类型
     roleTagType() {
       const typeMap = {
         'super_admin': 'warning',
@@ -424,15 +433,12 @@ export default {
       }
       return typeMap[this.currentUser.role] || 'default'
     },
-    // 是否为教练
     isCoach() {
       return this.currentUser.role === 'coach'
     },
-    // 是否为超级管理员
     isSuperAdmin() {
       return this.currentUser.role === 'super_admin'
     },
-    // 是否显示校区字段（超级管理员不显示）
     showCampusField() {
       return !this.isSuperAdmin
     }
@@ -444,21 +450,21 @@ export default {
     // 获取用户信息
     getUserInfo() {
       this.loading = true
-      console.log("getinfo发送: " + this.currentUser.token)
       getInfo(this.currentUser.token).then(response => {
         const { data } = response
         this.userInfo = { ...this.userInfo, ...data }
-        console.log(data.avatar)
-        console.log(data.photoPath)
-        this.userInfo.confirmPassword = this.userInfo.password
-        
-        // 关键修改：仅存储图片文件名（后端返回的avatar/photo应是文件名，如"123.jpg"）
-        this.avatarUrl = data.avatar || ''  // 假设data.avatar是文件名（如"user123.jpg"）
-        this.coachPhotoUrl = data.photoPath || ''  // 假设data.photo是文件名（如"coach456.jpg"）
-        
+        console.log("密码" + data.password)
+        this.userInfo.confirmPassword = data.password
+        this.avatarUrl = data.avatar || ''
+        this.isAvatarDeleted = false // 初始化：未删除
+        this.coachPhotoUrl = data.photoPath || ''
+        this.isPhotoDeleted = false // 初始化：未删除
+        console.log("描述" + data.description)
+        console.log("真实姓名" + data.name)
+        console.log("确认密码" + this.confirmPassword)
         this.loading = false
       }).catch(error => {
-        this.$message.error('获取用户信息失败：' + (error.message || '未知错误'))
+        this.$message.error('获取用户信息失败：' + error.message)
         this.loading = false
       })
     },
@@ -482,15 +488,22 @@ export default {
         if (valid) {
           this.submitLoading = true
           try {
-            // 过滤不需要提交的字段
             const submitData = { ...this.userInfo }
             delete submitData.confirmPassword
-            // 调用action更新个人信息
-            const response = await this.$store.dispatch('user/updateProfile', submitData)
+            
+            // 获取当前用户角色
+            const currentRole = this.currentUser.role
+            console.log("profile submit role is " + currentRole)
+            console.log("profile submit avatar is " + submitData.avatar)
+            console.log("profile submit photo is " + submitData.photoPath)
+            
+            // 调用更新接口时传入角色参数
+            await this.$store.dispatch('user/updateProfile', {
+              userInfo: submitData,
+              role: currentRole
+            })
+            
             this.$message.success('个人信息更新成功')
-            // 重新获取最新用户信息
-            await this.$store.dispatch('user/getInfo')
-            // 刷新页面数据
             this.getUserInfo()
           } catch (error) {
             this.$message.error('更新失败：' + (error.message || '未知错误'))
@@ -501,13 +514,18 @@ export default {
       })
     },
 
+
     // 重置表单
+    // 重置表单（修改 handleReset，重置删除状态）
     handleReset() {
-      this.$refs.profileForm.resetFields()
-      // 清空图片URL
-      this.avatarUrl = ''
-      this.coachPhotoUrl = ''
-      this.getUserInfo() // 恢复原始数据
+      this.$refs.profileForm.resetFields();
+      // 重置头像状态（恢复原有数据）
+      this.avatarUrl = this.userInfo.avatar || '';
+      this.isAvatarDeleted = false;
+      // 重置教练照片状态
+      this.coachPhotoUrl = this.userInfo.photoPath || '';
+      this.isPhotoDeleted = false;
+      this.getUserInfo(); // 重新拉取原始数据
     },
 
     // 超过上传数量处理
@@ -515,34 +533,34 @@ export default {
       this.$message.warning('最多只能上传1张图片')
     },
 
-    // 头像上传相关
+    // 头像上传
     handleAvatarUpload(options) {
+      console.log("头像上传函数")
       this.avatarLoading = true
       this.avatarUploadPercentage = 0
       
-      const formData = new FormData()
-      formData.append('file', options.file)
-      
-      uploadFile(formData).then(response => {
+      uploadAvatar(options.file).then(response => {
         this.avatarLoading = false
         this.avatarUploadPercentage = 100
-        options.onSuccess(response)
-        setTimeout(() => {
-          this.avatarUploadPercentage = 0
-        }, 1000)
+        const imgFileName = response.data  
+        this.userInfo.avatar = imgFileName
+        this.avatarUrl = imgFileName
+        this.$message.success('头像上传成功')
+        setTimeout(() => this.avatarUploadPercentage = 0, 1000)
       }).catch(error => {
         this.avatarLoading = false
-        options.onError(error)
+        this.$message.error('头像上传失败：' + error.message)
       })
     },
 
-    // 2. 头像上传成功 - 仅存储文件名（后端返回的url应是文件名）
+    // 头像上传成功（修改 handleAvatarSuccess）
     handleAvatarSuccess(response) {
-      // 关键修改：假设后端返回 { data: { url: "user123.jpg" } }（仅文件名）
-      const imgFileName = response.data.url  
-      this.userInfo.avatar = imgFileName  // 存储文件名到表单
-      this.avatarUrl = imgFileName        // 用于回显的文件名
-      this.$message.success('头像上传成功')
+      const imgFileName = response.data;
+      this.userInfo.avatar = imgFileName; // 保存新文件名到表单
+      this.avatarUrl = imgFileName; // 更新预览路径
+      this.isAvatarDeleted = false; // 重置删除状态（新头像上传后，删除状态取消）
+      console.log("success函数")
+      this.$message.success('头像上传成功');
     },
 
     beforeAvatarUpload(file) {
@@ -558,48 +576,44 @@ export default {
       return isImage && isLt2M
     },
 
-    // 教练照片上传相关
+    // 教练照片上传
     handlePhotoUpload(options) {
       this.photoLoading = true
       this.photoUploadPercentage = 0
       
-      const formData = new FormData()
-      formData.append('file', options.file)
-      
-      uploadFile(formData).then(response => {
+      uploadCoachPhoto(options.file).then(response => {
         this.photoLoading = false
         this.photoUploadPercentage = 100
-        options.onSuccess(response)
-        setTimeout(() => {
-          this.photoUploadPercentage = 0
-        }, 1000)
+        const imgFileName = response.data  
+        this.userInfo.photoPath = imgFileName
+        this.coachPhotoUrl = imgFileName
+        this.$message.success('照片上传成功')
+        setTimeout(() => this.photoUploadPercentage = 0, 1000)
       }).catch(error => {
         this.photoLoading = false
-        options.onError(error)
+        this.$message.error('照片上传失败：' + error.message)
       })
     },
 
-   // 3. 教练照片上传成功 - 仅存储文件名
+    // 教练照片上传成功（同理修改，确保替换逻辑一致）
     handlePhotoSuccess(response) {
-      // 关键修改：假设后端返回 { data: { url: "coach456.jpg" } }（仅文件名）
-      const imgFileName = response.data.url  
-      this.userInfo.photoPath = imgFileName   // 存储文件名到表单
-      this.coachPhotoUrl = imgFileName    // 用于回显的文件名
-      this.$message.success('照片上传成功')
+      const imgFileName = response.data;
+      this.userInfo.photoPath = imgFileName;
+      this.coachPhotoUrl = imgFileName;
+      this.isPhotoDeleted = false; // 重置教练照片删除状态
+      this.$message.success('照片上传成功');
     },
 
     handleUploadError(error) {
       this.$message.error('上传失败：' + (error.message || '未知错误'))
     },
 
-    // 4. 头像加载失败 - 显示默认图
     handleAvatarError(e) {
-      e.target.src = '/default-avatar.gif'  // 需在前端public目录放置默认头像
+      e.target.src = '/default-avatar.gif'
     },
 
-    // 5. 教练照片加载失败 - 显示默认图（复用教练审核页面的默认图）
     handlePhotoError(e) {
-      e.target.src = '/default-coach.png'  // 需在前端public目录放置默认教练图
+      e.target.src = '/default-coach.png'
     },
 
     beforePhotoUpload(file) {
@@ -613,12 +627,34 @@ export default {
         this.$message.error('图片大小不能超过 2MB！')
       }
       return isImage && isLt2M
-    }
+    },
+
+      // 新增：临时删除头像（前端预览）
+    handleAvatarDelete() {
+      this.isAvatarDeleted = true; // 标记为已删除，隐藏预览
+      this.avatarUrl = ''; // 清空预览路径
+      this.userInfo.avatar = ''; // 关键：将头像字段设为空，提交时传给后端
+      console.log("头像删除? " + this.userInfo.avatar);
+      // 触发表单验证（删除后需重新验证「是否上传头像」）
+      this.$refs.profileForm.validateField('avatar');
+    },
+
+    // 新增：临时删除教练照片（同理，教练照片也需要）
+    handlePhotoDelete() {
+      this.isPhotoDeleted = true;
+      this.coachPhotoUrl = '';
+      this.userInfo.photoPath = '';
+      console.log("删除照片? " + this.isPhotoDeleted );
+      console.log("isCoach? " + this.isCoach)
+      console.log("this照片? " + this.photoPath);
+      this.$refs.profileForm.validateField('photoPath');
+    },
   }
 }
 </script>
 
 <style lang="scss" scoped>
+/* 样式保持不变 */
 .profile-container {
   padding: 20px;
   max-width: 1000px;
@@ -656,6 +692,10 @@ export default {
 
 .profile-form {
   padding: 20px;
+}
+
+.el-form-item {
+  margin-bottom: 15px;
 }
 
 .form-item {
@@ -752,4 +792,114 @@ export default {
   min-height: 100px;
   resize: vertical;
 }
+
+/* 新增：头像预览容器（控制 hover 显示删除图标） */
+.avatar-preview-container {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+
+  /* 鼠标 hover 时加暗层 */
+  &:hover {
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 1;
+    }
+  }
+}
+
+/* 新增：删除图标（默认隐藏，hover显示） */
+.avatar-delete-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 24px;
+  z-index: 2;
+  opacity: 0; /* 默认隐藏 */
+  transition: opacity 0.3s ease;
+
+  /* 父容器 hover 时显示 */
+  .avatar-preview-container:hover & {
+    opacity: 1;
+  }
+
+  /* 点击删除图标时的反馈 */
+  &:hover {
+    color: #ff4d4f; /* 红色高亮 */
+  }
+}
+
+/* 新增：上传占位符（和原有图标样式保持一致） */
+.avatar-upload-placeholder {
+  width: 120px;
+  height: 120px;
+  text-align: center;
+  line-height: 120px;
+  border-radius: 6px;
+  border: 1px dashed #dcdcdc;
+}
+
+/* 教练照片同理（复制上面的样式，改个类名即可） */
+.photo-preview-container {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+
+  &:hover {
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 1;
+    }
+  }
+}
+
+.photo-delete-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 24px;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+
+  .photo-preview-container:hover & {
+    opacity: 1;
+  }
+
+  &:hover {
+    color: #ff4d4f;
+  }
+}
+
+.photo-upload-placeholder {
+  width: 120px;
+  height: 120px;
+  text-align: center;
+  line-height: 120px;
+  border-radius: 6px;
+  border: 1px dashed #dcdcdc;
+}
+
 </style>

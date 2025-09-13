@@ -1,7 +1,7 @@
 import { login, logout, getInfo } from '@/api/user'
 import { getToken, setToken, removeToken } from '@/utils/auth'
 import { resetRouter } from '@/router'
-import { updateProfile } from '@/api/profile'
+import { updateProfile } from '@/api/user'
 
 const getDefaultState = () => {
   return {
@@ -142,18 +142,17 @@ const actions = {
   },
 
   // 新增：更新个人信息
-  updateProfile({ commit }, userInfo) {
+  updateProfile({ commit }, { userInfo, role }) {
     return new Promise((resolve, reject) => {
-      // 调用更新个人信息的API
-      updateProfile(userInfo).then(response => {
+      // 调用更新个人信息的API，传入角色参数
+      updateProfile(userInfo, role).then(response => {
         const { data } = response
         if (!data) {
           return reject('更新失败，请重试')
         }
-        // 更新store中的用户信息（根据实际返回数据结构调整）
+        // 更新store中的用户信息
         commit('SET_NAME', userInfo.name)
         commit('SET_AVATAR', userInfo.avatar || data.avatar)
-        // 如需更新其他字段（如username、phone等），可添加对应的mutation
         resolve(response)
       }).catch(error => {
         reject(error)

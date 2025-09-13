@@ -77,3 +77,37 @@ export function register(data, role) {
 //     }
 //   })
 // }
+
+// 上传头像
+export function uploadAvatar(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request({
+    url: '/upload/avatar',
+    method: 'post',
+    data: formData,
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+}
+
+// 上传教练照片
+export function uploadCoachPhoto(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request({
+    url: '/upload/coach-photo',
+    method: 'post',
+    data: formData,
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+}
+
+// 更新个人信息（不含文件）
+export function updateProfile(data, role) {
+  // 根据角色动态生成URL
+  return request({
+    url: `/${role}/update_info`,
+    method: 'post',
+    data
+  })
+}
