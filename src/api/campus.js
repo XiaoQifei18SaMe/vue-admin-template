@@ -2,11 +2,17 @@
 import request from '@/utils/request'
 
 // 获取校区列表
-export function getCampusList(params) {
+// export function getCampusList(params) {
+//   return request({
+//     url: '/campus/list',
+//     method: 'get',
+//     params
+//   })
+// }
+export function getSchoolOptions() {
   return request({
-    url: '/campus/list',
-    method: 'get',
-    params
+    url: '/common/school_options', // 后端公共接口路径
+    method: 'get', // 请求方式为GET
   })
 }
 

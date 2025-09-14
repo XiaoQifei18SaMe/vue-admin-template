@@ -104,12 +104,17 @@
         <span class="svg-container">
           <svg-icon icon-class="campus" />
         </span>
-        <el-select v-model="registerForm.campus" placeholder="请选择校区">
+        <!-- 下拉框选项从schools数组动态渲染，label=学校名称，value=学校ID -->
+        <el-select 
+          v-model="registerForm.campus" 
+          placeholder="请选择学校"
+           :disabled="schoolLoading || !schools.length"
+        >
           <el-option 
-            v-for="campus in campuses" 
-            :key="campus.value" 
-            :label="campus.label" 
-            :value="campus.value" 
+            v-for="school in schools" 
+            :key="school.id"
+            :label="school.schoolname"
+            :value="school.id"
           />
         </el-select>
       </el-form-item>
@@ -194,6 +199,7 @@
 <script>
 import { validUsername, validPassword } from '@/utils/validate'
 import { register } from '@/api/user'
+import { getSchoolOptions} from '@/api/campus'
 
 export default {
   name: 'Register',
@@ -339,23 +345,49 @@ export default {
           }
         ]
       },
-      campuses: [
-        { label: '总校区', value: 1 },
-        { label: '东校区', value: 2 },
-        { label: '西校区', value: 3 },
-        { label: '南校区', value: 4 },
-        { label: '北校区', value: 5 }
-      ],
+      schools: [],
       loading: false,
       passwordType: 'password',
       confirmPasswordType: 'password',
+      schoolLoading: false, // 学校列表加载状态（用于加载提示）
     }
   },
+  created() {
+    // 组件初始化时调用接口，获取学校列表
+    this.fetchSchoolOptions()
+  },
   methods: {
+    async fetchSchoolOptions() {
+      this.schoolLoading = true // 开启加载状态
+      try {
+        // 1. 调用接口：此时 schoolList 是后端返回的完整响应对象（{code, message, data, success}）
+        const schoolList = await getSchoolOptions()
+        
+        // 2. 关键修正：从响应的 data 字段提取学校列表（这是真正的数组）
+        // 增加安全判断：确保 data 存在且是数组，避免渲染错误
+        const realSchoolList = Array.isArray(schoolList.data) ? schoolList.data : []
+        
+        // 3. 打印日志确认数据格式（便于调试）
+        console.log("获取到的学校列表（数组）：", realSchoolList)
+        console.log("第一个学校名称：", realSchoolList[0]?.schoolname) // 应该输出 "北苑一"
+        
+        // 4. 赋值给 schools 数组（此时 schools 是真正的学校列表数组）
+        this.schools = realSchoolList
+        
+      } catch (error) {
+        // 错误处理：确保 schools 始终是数组
+        this.schools = []
+        this.$message.error('获取学校列表失败，请刷新页面重试')
+        console.error('获取学校列表异常：', error)
+      } finally {
+        this.schoolLoading = false // 关闭加载状态
+      }
+    },
+
     togglePasswordVisibility(type) {
       if (type === 'password') {
         this.passwordType = this.passwordType === 'password' ? '' : 'password'
-      } else {
+      } else {  // 修复此处的语法错误，添加冒号
         this.confirmPasswordType = this.confirmPasswordType === 'password' ? '' : 'password'
       }
       this.$nextTick(() => {

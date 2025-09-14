@@ -107,6 +107,8 @@ const actions = {
         console.log("vuex存储role: " + role)
         commit('SET_NAME', username)
         commit('SET_AVATAR', avatar)
+        console.log("vuex存储avatar: " + data.avatar)
+        commit('SET_AVATAR', avatar ? `http://localhost:8080/user-avatars/${avatar}` : 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif')
         
         // 5. 将完整用户信息返回（供登录后调用generateRoutes使用）
         resolve(data)

@@ -102,20 +102,20 @@
           </el-form-item>
 
           <!-- 真实姓名 -->
-          <el-form-item label="真实姓名" prop="name">
+          <el-form-item label="真实姓名" prop="name" v-if="!isSuperAdmin">
             <el-input v-model="userInfo.name" />
           </el-form-item>
 
           <!-- 性别 -->
-          <el-form-item label="性别" prop="gender">
-            <el-select v-model="userInfo.gender" placeholder="请选择性别">
-              <el-option label="男" value="male" />
-              <el-option label="女" value="female" />
+          <el-form-item label="性别" prop="male" v-if="!isAdmin">
+            <el-select v-model="userInfo.male" placeholder="请选择性别">
+              <el-option label="男" :value="true" />
+              <el-option label="女" :value="false" />
             </el-select>
           </el-form-item>
 
           <!-- 年龄 -->
-          <el-form-item label="年龄" prop="age">
+          <el-form-item label="年龄" prop="age" v-if="!isAdmin">
             <el-input v-model="userInfo.age" type="number" min="0" max="120" />
           </el-form-item>
 
@@ -129,14 +129,18 @@
             <el-input v-model="userInfo.email" type="email" />
           </el-form-item>
 
-          <!-- 校区（针对管理员、教练、学生） -->
-          <el-form-item label="所属校区" prop="campus" v-if="showCampusField">
-            <el-select v-model="userInfo.campus" placeholder="请选择校区">
+          <!-- 校区（针对教练、学生） -->
+           <el-form-item label="所属校区" prop="schoolId" v-if="!isAdmin">
+            <el-select 
+              v-model="userInfo.schoolId" 
+              placeholder="请选择校区"
+              :disabled="campusLoading || !campuses.length"
+            >
               <el-option 
                 v-for="campus in campuses" 
-                :key="campus.value" 
-                :label="campus.label" 
-                :value="campus.value" 
+                :key="campus.id"
+                :label="campus.schoolname"
+                :value="campus.id"
               />
             </el-select>
           </el-form-item>
@@ -234,6 +238,7 @@
 // 引入必要的API
 import { getInfo, uploadAvatar, uploadCoachPhoto } from '@/api/user'
 import { validPhone, validUsername, validPassword} from '@/utils/validate'
+import { getSchoolOptions } from '@/api/campus'  // 引入获取校区列表的接口
 
 export default {
   name: 'Profile',
@@ -304,11 +309,11 @@ export default {
         password: '',
         confirmPassword: '',
         name: '',
-        gender: '',
+        male: '',
         age: '',
         phone: '',
         email: '',
-        campus: '',
+        schoolId: '',
         avatar: '',
         photoPath: '',  // 修正字段名与后端一致
         description: ''
@@ -317,13 +322,8 @@ export default {
       passwordType: 'password',
       confirmPasswordType: 'password',
       // 校区列表
-      campuses: [
-        { label: '总校区', value: 'main' },
-        { label: '东校区', value: 'east' },
-        { label: '西校区', value: 'west' },
-        { label: '南校区', value: 'south' },
-        { label: '北校区', value: 'north' }
-      ],
+      campuses: [],
+      campusLoading: false,  // 校区列表加载状态
       // 表单验证规则
       formRules: {
         username: [
@@ -347,7 +347,7 @@ export default {
         age: [
           { trigger: ['blur', 'change'], validator: validateAge }
         ],
-        campus: [
+        schoolId: [
           { required: true, trigger: 'change', message: '请选择校区' }
         ],
         avatar: [
@@ -436,24 +436,53 @@ export default {
     isCoach() {
       return this.currentUser.role === 'coach'
     },
-    isSuperAdmin() {
-      return this.currentUser.role === 'super_admin'
+    isAdmin() {
+      return this.isSuperAdmin || this.currentUser.role == 'admin'
     },
-    showCampusField() {
-      return !this.isSuperAdmin
+    isSuperAdmin(){
+      return this.currentUser.role === 'super_admin'
     }
   },
   created() {
-    this.getUserInfo()
+    // 先获取校区列表，再获取用户信息
+    this.fetchCampusOptions().then(() => {
+      this.getUserInfo()
+    })
   },
   methods: {
+    // 新增：获取校区列表（与注册页面保持一致）
+    async fetchCampusOptions() {
+      this.campusLoading = true
+      try {
+        const campusList = await getSchoolOptions()
+        // 关键修改：将校区ID转为数字，确保类型统一
+        this.campuses = Array.isArray(campusList.data) 
+          ? campusList.data.map(campus => ({
+              ...campus,
+              id: Number(campus.id) // 强制转为数字类型
+            })) 
+          : []
+        console.log("处理后的校区列表（ID为数字）：", this.campuses)
+      } catch (error) {
+        this.campuses = []
+        this.$message.error('获取校区列表失败，请刷新页面重试')
+        console.error('获取校区列表异常：', error)
+      } finally {
+        this.campusLoading = false
+      }
+    },
+
     // 获取用户信息
     getUserInfo() {
       this.loading = true
       getInfo(this.currentUser.token).then(response => {
         const { data } = response
         this.userInfo = { ...this.userInfo, ...data }
+        //this.userInfo.male = data.male === true ? true : false
+        this.userInfo.schoolId = data.schoolId ? Number(data.schoolId) : null
         console.log("密码" + data.password)
+        //this.userInfo.campus = data.schoolId
+        console.log("学校" + data.schoolId)
         this.userInfo.confirmPassword = data.password
         this.avatarUrl = data.avatar || ''
         this.isAvatarDeleted = false // 初始化：未删除
@@ -461,7 +490,9 @@ export default {
         this.isPhotoDeleted = false // 初始化：未删除
         console.log("描述" + data.description)
         console.log("真实姓名" + data.name)
-        console.log("确认密码" + this.confirmPassword)
+        console.log("确认密码" + this.userInfo.confirmPassword)
+        console.log("性别" + data.male)
+        console.log("性别" + this.userInfo.male)
         this.loading = false
       }).catch(error => {
         this.$message.error('获取用户信息失败：' + error.message)
@@ -496,6 +527,7 @@ export default {
             console.log("profile submit role is " + currentRole)
             console.log("profile submit avatar is " + submitData.avatar)
             console.log("profile submit photo is " + submitData.photoPath)
+            console.log("profile submit schoolId is " + submitData.schoolId)
             
             // 调用更新接口时传入角色参数
             await this.$store.dispatch('user/updateProfile', {
