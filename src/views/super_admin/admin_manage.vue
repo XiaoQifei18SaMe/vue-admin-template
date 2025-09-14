@@ -1,5 +1,11 @@
 <template>
   <div class="admin-management">
+    <!-- 新增的标题和提示文本 -->
+    <div class="page-header">
+      <h2>管理员管理</h2>
+      <p>您可以在这里查看、新增、编辑和删除系统管理员</p>
+    </div>
+    
     <el-card class="admin-card">
       <div class="card-header">
         <el-button type="primary" @click="handleAdd">新增管理员</el-button>
@@ -51,16 +57,35 @@
         class="admin-form"
       >
         <el-form-item label="用户名" prop="username">
-          <el-input v-model="formData.username" placeholder="请输入用户名"></el-input>
+          <el-input 
+            v-model="formData.username" 
+            placeholder="请输入用户名"
+            :disabled="!!formData.id"
+          ></el-input>
         </el-form-item>
         
         <el-form-item label="密码" prop="password">
           <el-input 
+            :key="passwordType"
             v-model="formData.password" 
-            type="password" 
-            placeholder="请输入密码"
-            :disabled="formData.id"
+            :type="passwordType" 
+            placeholder="请输入新密码（8-16位，含字母、数字、特殊字符，不修改请留空）"
           ></el-input>
+          <span class="show-pwd" @click="togglePasswordVisibility('password')">
+            <i :class="passwordType === 'password' ? 'el-icon-view' : 'el-icon-hide'"></i>
+          </span>
+        </el-form-item>
+        
+        <el-form-item label="确认密码" prop="confirmPassword">
+          <el-input 
+            :key="confirmPasswordType"
+            v-model="formData.confirmPassword" 
+            :type="confirmPasswordType" 
+            placeholder="请再次输入密码（不修改请留空）"
+          ></el-input>
+          <span class="show-pwd" @click="togglePasswordVisibility('confirmPassword')">
+            <i :class="confirmPasswordType === 'password' ? 'el-icon-view' : 'el-icon-hide'"></i>
+          </span>
         </el-form-item>
         
         <el-form-item label="姓名" prop="name">
@@ -86,7 +111,7 @@
 
 <script>
 import { getAdmins, createAdmin, updateAdmin, deleteAdmin } from '@/api/super_admin'
-import { validPhone } from '@/utils/validate'
+import { validPhone, validPassword, validUsername } from '@/utils/validate'
 
 export default {
   name: 'AdminManagement',
@@ -99,27 +124,69 @@ export default {
       }
     }
 
+    const validateUsername = (rule, value, callback) => {
+      if (!value) {
+        callback(new Error('请输入用户名'))
+      } else if (!validUsername(value)) {
+        callback(new Error('用户名需4-16位，可以包含字母、数字和下划线'))
+      } else {
+        callback()
+      }
+    }
+
+    const validatePassword = (rule, value, callback) => {
+      if (!value) {
+        callback()
+      } else if (!validPassword(value)) {
+        callback(new Error('密码需8-16位，包含字母、数字和特殊字符'))
+      } else {
+        if (this.formData.confirmPassword) {
+          this.$refs.adminForm.validateField('confirmPassword')
+        }
+        callback()
+      }
+    }
+
+    const validateConfirmPassword = (rule, value, callback) => {
+      if (!value) {
+        if (this.formData.password) {
+          callback(new Error('请确认密码'))
+        } else {
+          callback()
+        }
+      } else if (value !== this.formData.password) {
+        callback(new Error('两次输入的密码不一致'))
+      } else {
+        callback()
+      }
+    }
+
     return {
       tableLoading: false,
       adminList: [],
       dialogVisible: false,
       dialogTitle: '新增管理员',
+      passwordType: 'password',
+      confirmPasswordType: 'password',
       formData: {
         id: null,
         username: '',
         password: '',
+        confirmPassword: '',
         name: '',
         phone: '',
         email: ''
       },
       formRules: {
         username: [
-          { required: true, message: '请输入用户名', trigger: 'blur' },
+          { required: true, trigger: 'blur', validator: validateUsername },
           { max: 20, message: '用户名最长20个字符', trigger: 'blur' }
         ],
         password: [
-          { required: true, message: '请输入密码', trigger: 'blur' },
-          { min: 6, max: 20, message: '密码长度在6-20个字符之间', trigger: 'blur' }
+          { trigger: 'blur', validator: validatePassword }
+        ],
+        confirmPassword: [
+          { trigger: 'blur', validator: validateConfirmPassword }
         ],
         name: [
           { required: true, message: '请输入姓名', trigger: 'blur' },
@@ -139,7 +206,18 @@ export default {
     this.fetchAdmins()
   },
   methods: {
-    // 获取所有管理员列表
+    togglePasswordVisibility(type) {
+      if (type === 'password') {
+        this.passwordType = this.passwordType === 'password' ? 'text' : 'password'
+      } else {
+        this.confirmPasswordType = this.confirmPasswordType === 'password' ? 'text' : 'password'
+      }
+      this.$nextTick(() => {
+        const inputDom = document.querySelector(`.admin-form .el-form-item:nth-child(${type === 'password' ? 2 : 3}) .el-input__inner`)
+        inputDom && inputDom.focus()
+      })
+    },
+
     async fetchAdmins() {
       this.tableLoading = true
       try {
@@ -157,13 +235,15 @@ export default {
       }
     },
 
-    // 打开新增弹窗
     handleAdd() {
       this.dialogTitle = '新增管理员'
+      this.passwordType = 'password'
+      this.confirmPasswordType = 'password'
       this.formData = {
         id: null,
         username: '',
         password: '',
+        confirmPassword: '',
         name: '',
         phone: '',
         email: ''
@@ -174,39 +254,41 @@ export default {
       })
     },
 
-    // 打开编辑弹窗
     handleEdit(row) {
       this.dialogTitle = '编辑管理员'
-      // 编辑时清空密码字段（避免展示原密码）
+      this.passwordType = 'password'
+      this.confirmPasswordType = 'password'
       this.formData = { 
         ...row,
-        password: ''
+        confirmPassword: row.password
       }
       this.dialogVisible = true
     },
 
-    // 提交表单（新增/更新）
     async submitForm() {
       this.$refs.adminForm.validate(async (valid) => {
         if (valid) {
           try {
             let response
+            const submitData = { ...this.formData }
+            delete submitData.confirmPassword
+            
             if (this.formData.id) {
-              // 更新管理员（如果密码为空则不传递密码字段）
-              const updateData = { ...this.formData }
-              if (!updateData.password) {
-                delete updateData.password
+              delete submitData.username;
+              
+              const originalAdmin = this.adminList.find(item => item.id === this.formData.id)
+              if (submitData.password === originalAdmin.password) {
+                delete submitData.password
               }
-              response = await updateAdmin(updateData)
+              response = await updateAdmin(submitData)
             } else {
-              // 新增管理员
-              response = await createAdmin(this.formData)
+              response = await createAdmin(submitData)
             }
 
             if (response.code === 20000) {
               this.$message.success(this.formData.id ? '管理员更新成功' : '管理员创建成功')
               this.dialogVisible = false
-              this.fetchAdmins() // 刷新列表
+              this.fetchAdmins()
             } else {
               this.$message.error(`${this.formData.id ? '更新' : '创建'}失败：${response.message}`)
             }
@@ -218,7 +300,6 @@ export default {
       })
     },
 
-    // 删除管理员
     async handleDelete(row) {
       this.$confirm(`确定要删除管理员【${row.username}】吗？`, '删除确认', {
         confirmButtonText: '确定',
@@ -229,7 +310,7 @@ export default {
           const response = await deleteAdmin(row.id)
           if (response.code === 20000) {
             this.$message.success('管理员删除成功')
-            this.fetchAdmins() // 刷新列表
+            this.fetchAdmins()
           } else {
             this.$message.error(`删除失败：${response.message}`)
           }
@@ -245,11 +326,27 @@ export default {
 }
 </script>
 
-<style scoped>
+<style lang = "scss" scoped>
 .admin-management {
   padding: 20px;
   background-color: #f5f7fa;
   min-height: calc(100vh - 64px);
+}
+
+/* 新增的标题样式 */
+.page-header {
+  margin-bottom: 20px;
+  
+  h2 {
+    margin: 0 0 10px 0;
+    font-size: 18px;
+    color: #333;
+  }
+  
+  p {
+    margin: 0 0 10px 0;
+    color: #666;
+  }
 }
 
 .admin-card {
@@ -269,5 +366,16 @@ export default {
 
 .el-form-item {
   margin-bottom: 18px;
+  position: relative;
+}
+
+.show-pwd {
+  position: absolute;
+  right: 30px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #999;
+  z-index: 10;
 }
 </style>
