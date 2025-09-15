@@ -69,7 +69,7 @@
             :key="passwordType"
             v-model="formData.password" 
             :type="passwordType" 
-            placeholder="请输入新密码（8-16位，含字母、数字、特殊字符，不修改请留空）"
+            placeholder="请输入新密码（8-16位，含字母、数字、特殊字符）"
           ></el-input>
           <span class="show-pwd" @click="togglePasswordVisibility('password')">
             <i :class="passwordType === 'password' ? 'el-icon-view' : 'el-icon-hide'"></i>
@@ -81,7 +81,7 @@
             :key="confirmPasswordType"
             v-model="formData.confirmPassword" 
             :type="confirmPasswordType" 
-            placeholder="请再次输入密码（不修改请留空）"
+            placeholder="请再次输入密码"
           ></el-input>
           <span class="show-pwd" @click="togglePasswordVisibility('confirmPassword')">
             <i :class="confirmPasswordType === 'password' ? 'el-icon-view' : 'el-icon-hide'"></i>
