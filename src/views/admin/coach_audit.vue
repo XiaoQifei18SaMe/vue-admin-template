@@ -109,7 +109,7 @@
                   <span class="item-value">{{ currentCoach.schoolId }}</span>
                 </div>
                 <div class="detail-item description-item">
-                  <span class="item-label">个人描述</span>
+                  <span class="item-label">个人简介</span>
                   <div class="description-content">
                     {{ currentCoach.description || '无' }}
                   </div>

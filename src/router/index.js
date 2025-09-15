@@ -276,6 +276,33 @@ export const asyncRoutes = [
       }
     ]
   },
+
+  {
+    path: '/student/coach_select',
+    component: Layout,
+    meta: {
+      roles: ['student']
+    },
+    children: [{
+      path: '',
+      component: () => import('@/views/student/coach_select'),
+      meta: { title: '选择教练', icon: 'role' }
+    }]
+  },
+
+  {
+    path: '/coach/student_audit',
+    component: Layout,
+    meta: {
+      roles: ['coach']
+    },
+    children: [{
+      path: '',
+      component: () => import('@/views/coach/student_audit'),
+      meta: { title: '审核学生', icon: 'role' }
+    }]
+
+  },
   // 404 page must be placed at the end !!!
   { path: '*', redirect: '/404', hidden: true }
 ]

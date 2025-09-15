@@ -8,7 +8,9 @@ const getDefaultState = () => {
     token: getToken(),
     name: '',
     avatar: '',
-    role: ''// （关键！用于权限判断）
+    role: '',// （关键！用于权限判断）
+    userId: null,
+    schoolId: null
   }
 }
 
@@ -30,6 +32,12 @@ const mutations = {
   // 2. 新增：设置用户角色的mutation
   SET_ROLE: (state, role) => {
     state.role = role
+  },
+  SET_USERID: (state, userId) => {
+    state.userId = userId
+  },
+  SET_SCHOOLID: (state, schoolId) => {
+    state.schoolId = schoolId
   }
 }
 
@@ -100,7 +108,7 @@ const actions = {
         }
 
         // 3. 从接口返回数据中提取角色信息（关键！）
-        const { username, avatar, role } = data
+        const { username, avatar, role, schoolId, userId } = data
         console.log("getinfo返回" + data)
         // 4. 存储角色信息（用于permission.js过滤路由）
         commit('SET_ROLE', role)
@@ -111,6 +119,8 @@ const actions = {
         commit('SET_AVATAR', avatar ? `http://localhost:8080/user-avatars/${avatar}` : 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif')
         
         // 5. 将完整用户信息返回（供登录后调用generateRoutes使用）
+        commit('SET_USERID', userId)
+        commit('SET_SCHOOLID', schoolId)
         resolve(data)
       }).catch(error => {
         reject(error)

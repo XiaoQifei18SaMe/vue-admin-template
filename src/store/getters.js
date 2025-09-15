@@ -4,7 +4,9 @@ const getters = {
   token: state => state.user.token,
   avatar: state => state.user.avatar,
   name: state => state.user.name,
-  role: state => state.user.role, // 原为 roles: state => state.user.roles
+  role: state => state.user.role,
+  userId: state => state.user.userId,
+  schoolId: state => state.user.schoolId,
   'permission/routes': state => state.permission.routes
 }
 export default getters
