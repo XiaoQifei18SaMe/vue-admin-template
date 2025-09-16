@@ -303,6 +303,20 @@ export const asyncRoutes = [
     }]
 
   },
+
+  {
+    path: '/student',
+    component: Layout,
+    children: [
+      {
+        path: 'recharge',
+        name: 'StudentRecharge',
+        component: () => import('@/views/student/recharge'),
+        meta: { title: '账户充值', icon: 'money' }
+      }
+    ]
+  },
+  
   // 404 page must be placed at the end !!!
   { path: '*', redirect: '/404', hidden: true }
 ]
