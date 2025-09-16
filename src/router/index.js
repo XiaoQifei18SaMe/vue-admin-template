@@ -307,12 +307,32 @@ export const asyncRoutes = [
   {
     path: '/student',
     component: Layout,
+    meta: {
+      roles: ['student']
+    },
     children: [
       {
         path: 'recharge',
         name: 'StudentRecharge',
         component: () => import('@/views/student/recharge'),
         meta: { title: '账户充值', icon: 'money' }
+      }
+    ]
+  },
+
+  {
+    path: '/schedule',
+    component: Layout,
+    meta: { title: '课表管理', icon: 'table' },
+    children: [
+      {
+        path: '',
+        name: 'ScheduleManagement',
+        component: () => import('@/views/schedule/index'),
+        meta: { 
+          title: '课表管理',
+          roles: ['super_admin', 'admin'] // 超级管理员和校区管理员可访问
+        }
       }
     ]
   },
