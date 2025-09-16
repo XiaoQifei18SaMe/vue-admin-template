@@ -51,3 +51,25 @@ export function getSchoolSchedule(schoolId, isSuper) {
     method: 'get'
   })
 }
+
+// 获取现有课表模板的校区列表（区分角色）
+export function getExistingTemplates(isSuper, token) {
+    const url = isSuper
+      ? '/super_admin/schedule/existing-templates'
+      : '/admin/schedule/existing-templates'
+    
+    return request({
+      url,
+      method: 'get',
+      params: !isSuper ? { token } : {}
+    })
+  }
+  
+  // 获取指定校区的课表作为模板
+  export function getTemplateSchedule(schoolId, isSuper) {
+    const baseUrl = isSuper ? '/super_admin/schedule' : '/admin/schedule'
+    return request({
+      url: `${baseUrl}/template/${schoolId}`,
+      method: 'get'
+    })
+  }
