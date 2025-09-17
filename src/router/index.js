@@ -315,7 +315,7 @@ export const asyncRoutes = [
         path: 'recharge',
         name: 'StudentRecharge',
         component: () => import('@/views/student/recharge'),
-        meta: { title: '账户充值', icon: 'money' }
+        meta: { title: '账户充值', icon: 'money-wallet' }
       }
     ]
   },
@@ -323,16 +323,49 @@ export const asyncRoutes = [
   {
     path: '/schedule',
     component: Layout,
-    meta: { title: '课表管理', icon: 'table' },
+    meta: {
+      roles: ['super_admin', 'admin']
+    },
     children: [
       {
         path: '',
         name: 'ScheduleManagement',
         component: () => import('@/views/schedule/index'),
         meta: { 
-          title: '课表管理',
-          roles: ['super_admin', 'admin'] // 超级管理员和校区管理员可访问
+          title: '课表管理', icon: 'table',
         }
+      }
+    ]
+  },
+
+  {
+    path: '/student/course-booking',
+    component: Layout,
+    meta: {
+      roles: ['student']
+    },
+    children: [
+      {
+        path: '',
+        name: 'CourseBooking',
+        component: () => import('@/views/student/course_booking'),
+        meta: { title: '课程预约', roles: ['student'], icon: 'user' }
+      }
+    ]
+  },
+
+  {
+    path: '/coach/appointment-manage',
+    component: Layout,
+    meta: {
+      roles: ['coach']
+    },
+    children: [
+      {
+        path: '',
+        name: 'AppointmentManage',
+        component: () => import('@/views/coach/appointment_manage'),
+        meta: { title: '预约管理', roles: ['coach'], icon: 'user'}
       }
     ]
   },

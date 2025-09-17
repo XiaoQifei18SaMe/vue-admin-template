@@ -46,3 +46,12 @@ export function selectCoach(data) {
     params: data // 后端使用@RequestParam接收，故用params传递
   })
 }
+
+
+export function getRelatedCoaches(studentId) {
+  return request({
+    url: '/student/get_related_coaches',
+    method: 'get',
+    params: { studentId }
+  })
+}

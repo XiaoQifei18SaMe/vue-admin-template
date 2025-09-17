@@ -27,4 +27,12 @@ export function getStudentApplications(coachId) {
         isAccepted
       }
     })
-  }
+}
+  
+export function getRelatedStudents(coachId) {
+  return request({
+    url: '/coach/get_related_students',
+    method: 'get',
+    params: { coachId }
+  })
+}
