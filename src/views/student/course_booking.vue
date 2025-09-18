@@ -386,6 +386,11 @@ export default {
       try {
         const res = await getRelatedCoaches(this.userId);
         this.relatedCoaches = res.data || [];
+        // 新增：如果有教练，默认选中第一个并加载其课表
+        if (this.relatedCoaches.length > 0) {
+          this.selectedCoachId = this.relatedCoaches[0].id;
+          this.handleCoachChange(this.selectedCoachId); // 触发课表加载
+        }
         this.fetchMyAppointments();
       } catch (err) {
         Message.error(err.message || '获取教练列表失败');
