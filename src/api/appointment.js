@@ -71,3 +71,15 @@ export function getPendingCancelRecords(userId, userType) {
     params: { userId, userType }
   })
 }
+
+// 获取剩余取消次数
+export function getRemainingCancelCount(userId, userType) {
+  return request({
+    url: '/appointment/remaining_cancel_count',
+    method: 'get',
+    params: {
+      userId,
+      userType
+    }
+  })
+}

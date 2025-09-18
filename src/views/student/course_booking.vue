@@ -78,7 +78,16 @@
               >
                 <div class="time">{{ formatTime(appt.startTime) }} - {{ formatTime(appt.endTime) }}</div>
                 <div class="table">球台: {{ appt.tableId }}</div>
-                <div v-if="appt.studentId === userId" class="owner-tag">自己的预约</div>
+                <el-tag 
+                  v-if="appt.studentId === userId"
+                  :type="getStatusTagType(appt.status)" 
+                  size="mini"
+                  style="margin-top: 2px;"
+                >
+                  {{ getStatusText(appt.status) }}
+                </el-tag>
+                <div v-if="appt.studentId === userId" class="owner-tag">我的预约</div>
+                <div v-else class="other-tag">他人预约</div>
               </div>
             </div>
             <div v-else class="empty-tip">暂无预约</div>
@@ -93,7 +102,9 @@
         >
           <template slot-scope="scope">
             <!-- 已过期日期：禁用 -->
-            <div v-if="isPastDate(scope.row.dateObj)" class="status-tip">已过期</div>
+            <div v-if="isPastDate(scope.row.dateObj)" class="status-tip">
+              {{ scope.row.dateObj.toDateString() === new Date().toDateString() ? '今日不可预约' : '已过期' }}
+            </div>
             
             <!-- 有校区课表：展示可预约按钮 -->
             <div v-else-if="hasSchoolSchedule" class="available-slots">
@@ -172,6 +183,11 @@
     <el-card class="appointments-card">
       <div slot="header">
         <h3>我的预约</h3>
+        <div class="cancel-count-info">
+          本月剩余取消次数：<span :class="remainingCancelCount <= 0 ? 'count-exhausted' : 'count-available'">
+            {{ remainingCancelCount }}/{{ maxCancelCount }}
+          </span>
+        </div>
       </div>
       <el-table
         :data="myAppointments"
@@ -282,7 +298,8 @@ import {
   getStudentAppointments,
   requestCancel,
   handleCancelRequest,
-  getPendingCancelRecords
+  getPendingCancelRecords,
+  getRemainingCancelCount
 } from '@/api/appointment'
 import { getRelatedCoaches } from '@/api/student'
 import { Message, Loading } from 'element-ui'
@@ -340,19 +357,30 @@ export default {
       availableTables: [],
       formLabelWidth: '100px',
       myAppointments: [],
-      cancelCount: 0,
-      maxCancelCount: 3,
       hasSchoolSchedule: false,
       scheduleCheckError: '',
-      coachCancelRequests: [] // 新增：存储教练发起的取消申请
+      coachCancelRequests: [], // 新增：存储教练发起的取消申请
+      remainingCancelCount: 3, // 剩余取消次数
+      maxCancelCount: 3,       // 最大取消次数
     }
   },
   created() {
     this.fetchRelatedCoaches();
     this.checkAndFetchSchoolSchedule();
     this.fetchCoachCancelRequests(); // 新增：加载教练取消申请
+    this.fetchRemainingCancelCount(); // 新增：获取剩余取消次数
   },
   methods: {
+    // 新增：获取剩余取消次数
+    async fetchRemainingCancelCount() {
+      try {
+        const res = await getRemainingCancelCount(this.userId, 'STUDENT');
+        this.remainingCancelCount = res.data;
+      } catch (err) {
+        Message.error(err.message || '获取剩余取消次数失败');
+      }
+    },
+
     // 基础数据加载
     async fetchRelatedCoaches() {
       try {
@@ -507,9 +535,9 @@ export default {
         try {
           await requestCancel(appointmentId, this.userId, 'STUDENT');
           Message.success('取消申请已提交');
-          this.cancelCount += 1;
           await this.fetchMyAppointments();
           await this.fetchCoachSchedule();
+          await this.fetchRemainingCancelCount(); // 新增：刷新剩余次数
         } catch (err) {
           Message.error(err.message || '取消申请失败');
         }
@@ -559,8 +587,11 @@ export default {
 
     isPastDate(dateObj) {
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      return dateObj < today;
+      today.setHours(0, 0, 0, 0); // 今天0点
+      const targetDate = new Date(dateObj);
+      targetDate.setHours(0, 0, 0, 0); // 目标日期0点
+      // 当天及之前的日期都视为已过期
+      return targetDate <= today;
     },
 
     hasAppointmentConflict(dateObj, startTime, endTime) {
@@ -626,13 +657,30 @@ export default {
       const startTime = new Date(appointment.startTime);
       const now = new Date();
       const hoursDiff = (startTime - now) / (1000 * 60 * 60);
-      return hoursDiff >= 24 && this.cancelCount < this.maxCancelCount;
+      return hoursDiff >= 24 && this.remainingCancelCount > 0;
     }
   }
 }
 </script>
 
 <style lang="scss" scoped>
+
+
+.cancel-count-info {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #666;
+  
+  .count-available {
+    color: #52c41a;
+    font-weight: bold;
+  }
+  
+  .count-exhausted {
+    color: #f5222d;
+    font-weight: bold;
+  }
+}
 /* 基础容器样式 */
 .course-booking-container {
   padding: 20px;

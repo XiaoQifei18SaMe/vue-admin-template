@@ -10,6 +10,11 @@
     <el-card class="schedule-card">
       <div slot="header">
         <h3>我的课程表（未来一周）</h3>
+        <div class="cancel-count-info">
+          本月剩余取消次数：<span :class="remainingCancelCount <= 0 ? 'count-exhausted' : 'count-available'">
+            {{ remainingCancelCount }}/{{ maxCancelCount }}
+          </span>
+        </div>
       </div>
 
       <!-- 课表表格（border+stripe，与学生端样式统一） -->
@@ -102,16 +107,18 @@
           <template slot-scope="scope">
             <!-- 仅对已确认的预约显示“取消”按钮 -->
             <div v-if="scope.row.appointments.length > 0">
-              <div v-for="appt in scope.row.appointments" :key="appt.id">
-                <el-button 
-                  size="mini" 
-                  type="danger" 
-                  @click="handleCoachCancel(appt.id)"
-                  :disabled="!canCoachCancel(appt)"
-                  v-if="appt.status === 'CONFIRMED'"
-                >
-                  取消预约
-                </el-button>
+              <div class="appt-operation-group">
+                <div v-for="appt in scope.row.appointments" :key="appt.id" class="appt-operation-item">
+                  <el-button 
+                    size="mini" 
+                    type="danger" 
+                    @click="handleCoachCancel(appt.id)"
+                    :disabled="!canCoachCancel(appt)"
+                    v-if="appt.status === 'CONFIRMED'"
+                  >
+                    取消预约
+                  </el-button>
+                </div>
               </div>
             </div>
           </template>
@@ -167,11 +174,13 @@
 
 <script>
 import { 
-  getCoachAppointments, 
+  //getCoachAppointments, 
+  getCoachSchedule,
   handleCoachConfirmation,
   requestCancel,
   handleCancelRequest,
-  getPendingCancelRecords
+  getPendingCancelRecords,
+  getRemainingCancelCount
 } from '@/api/appointment'
 import { getRelatedStudents } from '@/api/coach' // 新增：获取教练关联的学员列表（用于匹配姓名）
 import { Message, Loading } from 'element-ui'
@@ -229,8 +238,8 @@ export default {
       relatedStudents: [], // 教练关联的学员列表（用于匹配姓名）
       cancelRequests: [], // 待处理取消申请
       loadingSchedule: false, // 课表加载中
-      cancelCount: 0, // 教练取消预约次数
-      maxCancelCount: 3 // 教练取消次数上限
+      remainingCancelCount: 0,  // 变更：存储剩余取消次数
+      maxCancelCount: 3  // 最大取消次数
     }
   },
   created() {
@@ -239,6 +248,7 @@ export default {
       .then(() => {
         this.fetchAllAppointments();
         this.fetchCancelRequests();
+        this.fetchRemainingCancelCount();  // 新增：获取剩余取消次数
       });
   },
   methods: {
@@ -263,7 +273,8 @@ export default {
     async fetchAllAppointments() {
       this.loadingSchedule = true;
       try {
-        const res = await getCoachAppointments(this.userId); // 调用教练预约列表接口
+        //const res = await getCoachAppointments(this.userId); // 旧接口：会返回CANCELLED状态
+        const res = await getCoachSchedule(this.userId); // 新接口：已过滤CANCELLED状态
         this.allAppointments = res.data || [];
       } catch (err) {
         Message.error(err.message || '获取预约列表失败');
@@ -290,6 +301,17 @@ export default {
         });
       } catch (err) {
         Message.error(err.message || '获取取消申请失败');
+      }
+    },
+
+     // 新增：获取本月剩余取消次数
+    async fetchRemainingCancelCount() {
+      try {
+        const res = await getRemainingCancelCount(this.userId, 'COACH');
+        this.remainingCancelCount = res.data || 0;
+      } catch (err) {
+        Message.error(err.message || '获取剩余取消次数失败');
+        this.remainingCancelCount = 0;  // 失败时默认0次
       }
     },
 
@@ -339,9 +361,9 @@ export default {
         try {
           await requestCancel(appointmentId, this.userId, 'COACH'); // userType=COACH
           Message.success('取消申请已提交');
-          this.cancelCount += 1;
           this.fetchAllAppointments();
           this.fetchCancelRequests();
+          this.fetchRemainingCancelCount();  // 新增：刷新剩余次数
         } catch (err) {
           Message.error(err.message || '取消失败');
         }
@@ -360,6 +382,7 @@ export default {
         Message.success(approve ? '已同意取消' : '已拒绝取消');
         this.fetchCancelRequests(); // 刷新取消申请列表
         this.fetchAllAppointments(); // 刷新课表
+        //this.fetchRemainingCancelCount();  // 新增：刷新剩余次数//感觉不用
       } catch (err) {
         Message.error(err.message || '处理失败');
       } finally {
@@ -442,13 +465,30 @@ export default {
       const startTime = new Date(appt.startTime);
       const now = new Date();
       const hoursDiff = (startTime - now) / (1000 * 60 * 60);
-      return hoursDiff >= 24 && this.cancelCount < this.maxCancelCount;
+      return hoursDiff >= 24 && this.remainingCancelCount > 0;
     }
   }
 }
 </script>
 
 <style lang="scss" scoped>
+
+/* 新增：剩余取消次数样式 */
+.cancel-count-info {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #666;
+  
+  .count-available {
+    color: #52c41a;
+    font-weight: bold;
+  }
+  
+  .count-exhausted {
+    color: #f5222d;
+    font-weight: bold;
+  }
+}
 /* 基础容器样式（与学生端完全一致） */
 .coach-appointment-container {
   padding: 20px;
@@ -561,5 +601,22 @@ export default {
 /* 表格单元格垂直居中（强制对齐） */
 .el-table__cell {
   vertical-align: middle !important;
+}
+
+/* 操作列按钮布局优化 */
+.appt-operation-group {
+  // 让按钮组高度自适应内容
+  min-height: 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 16px; // 关键：设置按钮之间的垂直间距
+}
+
+.appt-operation-item {
+  // 确保每个按钮容器占满列宽，按钮居中显示
+  width: 100%;
+  text-align: center;
 }
 </style>
