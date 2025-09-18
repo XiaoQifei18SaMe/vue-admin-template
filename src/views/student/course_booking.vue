@@ -1,12 +1,12 @@
 <template>
   <div class="course-booking-container">
-    <!-- 页面头部：标题区（与课表管理风格对齐） -->
+    <!-- 页面头部：标题区 -->
     <div class="page-header">
       <h2>课程预约</h2>
       <p>选择已建立双选关系的教练进行课程预约</p>
     </div>
 
-    <!-- 1. 选择教练：搜索卡片（保留原功能，样式对齐课表管理） -->
+    <!-- 1. 选择教练：搜索卡片 -->
     <el-card class="search-card">
       <el-form :model="searchForm" ref="searchForm" label-width="80px" inline>
         <el-form-item label="选择教练">
@@ -27,13 +27,13 @@
       </el-form>
     </el-card>
 
-    <!-- 2. 教练课表：表格化展示（核心改造，替换原日历） -->
+    <!-- 2. 教练课表：表格化展示 -->
     <el-card v-if="selectedCoachId" class="schedule-card">
       <div slot="header">
         <h3>{{ selectedCoachName }} 教练的课程表（未来一周）</h3>
       </div>
 
-      <!-- 课表表格（与课表管理表格样式统一：border+stripe） -->
+      <!-- 课表表格 -->
       <el-table
         :data="groupedSchedule"
         border
@@ -85,7 +85,7 @@
           </template>
         </el-table-column>
 
-        <!-- 可预约时段列（核心交互区） -->
+        <!-- 可预约时段列 -->
         <el-table-column
           label="可预约时段"
           align="center"
@@ -95,9 +95,8 @@
             <!-- 已过期日期：禁用 -->
             <div v-if="isPastDate(scope.row.dateObj)" class="status-tip">已过期</div>
             
-            <!-- 有校区课表：展示可预约按钮（Vue2 兼容版） -->
+            <!-- 有校区课表：展示可预约按钮 -->
             <div v-else-if="hasSchoolSchedule" class="available-slots">
-              <!-- 1. 筛选当前行星期对应的时段，Vue2中template的v-for不直接绑定key -->
               <template v-for="slot in schoolTimeSlots.filter(s => s.dayOfWeek === scope.row.dayOfWeekNum)">
                 <el-button 
                   :key="slot.id"  
@@ -108,13 +107,11 @@
                   :disabled="hasAppointmentConflict(scope.row.dateObj, slot.startTime, slot.endTime)"
                   style="margin: 2px 4px;"
                 >
-                  <!-- 2. 格式化时间：去掉秒数（HH:mm:ss → HH:mm） -->
                   {{ slot.startTime.slice(0, 5) }}-{{ slot.endTime.slice(0, 5) }} 
                   {{ hasAppointmentConflict(scope.row.dateObj, slot.startTime, slot.endTime) ? '(已预约)' : '(可预约)' }}
                 </el-button>
               </template>
               
-              <!-- 3. 筛选后无时段：显示提示 -->
               <div v-if="schoolTimeSlots.filter(s => s.dayOfWeek === scope.row.dayOfWeekNum).length === 0" class="empty-tip">
                 暂无可用时段
               </div>
@@ -127,7 +124,93 @@
       </el-table>
     </el-card>
 
-    <!-- 3. 预约弹窗（保留原功能，样式对齐课表管理） -->
+    <!-- 3. 待处理教练取消申请（新增部分） -->
+    <el-card class="cancel-requests-card">
+      <div slot="header">
+        <h3>待处理教练取消申请</h3>
+      </div>
+      <el-table
+        v-if="coachCancelRequests.length > 0"
+        :data="coachCancelRequests"
+        border
+        stripe
+        style="width: 100%;"
+      >
+        <el-table-column prop="id" label="申请ID" width="80" align="center"></el-table-column>
+        <el-table-column prop="appointmentId" label="预约ID" width="80" align="center"></el-table-column>
+        <el-table-column prop="coachName" label="教练" align="center"></el-table-column>
+        <el-table-column prop="createTime" label="申请时间" align="center">
+          <template slot-scope="scope">{{ formatFullTime(scope.row.createTime) }}</template>
+        </el-table-column>
+        <el-table-column label="操作" align="center" width="180">
+          <template slot-scope="scope">
+            <div style="display: flex; gap: 4px; justify-content: center;">
+              <el-button 
+                size="mini" 
+                type="success" 
+                @click="handleCancelApprove(scope.row.id, true)"
+              >
+                同意取消
+              </el-button>
+              <el-button 
+                size="mini" 
+                type="danger" 
+                @click="handleCancelApprove(scope.row.id, false)"
+              >
+                拒绝取消
+              </el-button>
+            </div>
+          </template>
+        </el-table-column>
+      </el-table>
+      <div v-else class="empty">
+        <el-empty description="暂无待处理的教练取消申请"></el-empty>
+      </div>
+    </el-card>
+
+    <!-- 4. 我的预约列表 -->
+    <el-card class="appointments-card">
+      <div slot="header">
+        <h3>我的预约</h3>
+      </div>
+      <el-table
+        :data="myAppointments"
+        border
+        stripe
+        style="width: 100%;"
+      >
+        <el-table-column prop="id" label="预约ID" width="80" align="center"></el-table-column>
+        <el-table-column prop="coachName" label="教练" align="center"></el-table-column>
+        <el-table-column prop="startTime" label="开始时间" align="center">
+          <template slot-scope="scope">{{ formatFullTime(scope.row.startTime) }}</template>
+        </el-table-column>
+        <el-table-column prop="endTime" label="结束时间" align="center">
+          <template slot-scope="scope">{{ formatFullTime(scope.row.endTime) }}</template>
+        </el-table-column>
+        <el-table-column prop="tableId" label="球台" align="center"></el-table-column>
+        <el-table-column prop="status" label="状态" align="center">
+          <template slot-scope="scope">
+            <el-tag :type="getStatusTagType(scope.row.status)">
+              {{ getStatusText(scope.row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" align="center" width="120">
+          <template slot-scope="scope">
+            <el-button 
+              size="mini" 
+              type="danger" 
+              @click="handleCancelRequest(scope.row.id)"
+              :disabled="!canCancel(scope.row)"
+            >
+              取消预约
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
+
+    <!-- 5. 预约弹窗 -->
     <el-dialog
       :visible.sync="showBookDialog"
       title="预约课程"
@@ -189,48 +272,6 @@
         <el-button type="primary" @click="submitBooking">确认预约</el-button>
       </div>
     </el-dialog>
-
-    <!-- 4. 我的预约列表（表格化，与课表管理风格统一） -->
-    <el-card class="appointments-card">
-      <div slot="header">
-        <h3>我的预约</h3>
-      </div>
-      <el-table
-        :data="myAppointments"
-        border
-        stripe
-        style="width: 100%;"
-      >
-        <el-table-column prop="id" label="预约ID" width="80" align="center"></el-table-column>
-        <el-table-column prop="coachName" label="教练" align="center"></el-table-column>
-        <el-table-column prop="startTime" label="开始时间" align="center">
-          <template slot-scope="scope">{{ formatFullTime(scope.row.startTime) }}</template>
-        </el-table-column>
-        <el-table-column prop="endTime" label="结束时间" align="center">
-          <template slot-scope="scope">{{ formatFullTime(scope.row.endTime) }}</template>
-        </el-table-column>
-        <el-table-column prop="tableId" label="球台" align="center"></el-table-column>
-        <el-table-column prop="status" label="状态" align="center">
-          <template slot-scope="scope">
-            <el-tag :type="getStatusTagType(scope.row.status)">
-              {{ getStatusText(scope.row.status) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" align="center" width="120">
-          <template slot-scope="scope">
-            <el-button 
-              size="mini" 
-              type="danger" 
-              @click="handleCancelRequest(scope.row.id)"
-              :disabled="!canCancel(scope.row)"
-            >
-              取消预约
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
   </div>
 </template>
 
@@ -239,7 +280,9 @@ import {
   getCoachSchedule, 
   bookCourse, 
   getStudentAppointments,
-  requestCancel
+  requestCancel,
+  handleCancelRequest,
+  getPendingCancelRecords
 } from '@/api/appointment'
 import { getRelatedCoaches } from '@/api/student'
 import { Message, Loading } from 'element-ui'
@@ -253,28 +296,22 @@ export default {
   name: 'CourseBooking',
   computed: {
     ...mapGetters(['userId', 'role', 'schoolId']),
-    /**
-     * 核心改造：将教练课表按「未来一周日期」分组，用于表格渲染
-     * 返回格式：[{ date: '2024-05-20', weekDay: '周一', dateObj: Date, appointments: [] }, ...]
-     */
     groupedSchedule() {
       const futureWeek = [];
       for (let i = 0; i < 7; i++) {
         const dateObj = new Date();
         dateObj.setDate(dateObj.getDate() + i);
-        // 关键新增：计算星期数值（1-7，与后端 dayOfWeek 对齐）
-        const getDayNum = dateObj.getDay(); // 原生 getDay() 返回 0-6（0=周日）
-        const dayOfWeekNum = getDayNum === 0 ? 7 : getDayNum; // 转换为 1-7
+        const getDayNum = dateObj.getDay();
+        const dayOfWeekNum = getDayNum === 0 ? 7 : getDayNum;
         
         futureWeek.push({
           date: this.formatDate(dateObj),
           weekDay: this.getWeekDay(dateObj),
           dateObj: dateObj,
-          dayOfWeekNum: dayOfWeekNum // 新增：用于匹配后端时段的星期
+          dayOfWeekNum: dayOfWeekNum
         });
       }
 
-      // 为每天匹配已预约课程（原有逻辑不变）
       return futureWeek.map(day => ({
         ...day,
         appointments: this.schedule.filter(appt => 
@@ -286,51 +323,50 @@ export default {
   data() {
     return {
       searchForm: { coachId: null },
-      relatedCoaches: [], // 双选教练列表
-      selectedCoachId: null, // 当前选中教练ID
-      selectedCoachName: '', // 当前选中教练名称
-      schedule: [], // 教练已预约课表
-      schoolTimeSlots: [], // 校区可预约时段
-      loadingSchedule: false, // 课表加载中
-      showBookDialog: false, // 预约弹窗显隐
-      bookForm: { // 预约表单
+      relatedCoaches: [],
+      selectedCoachId: null,
+      selectedCoachName: '',
+      schedule: [],
+      schoolTimeSlots: [],
+      loadingSchedule: false,
+      showBookDialog: false,
+      bookForm: {
         date: '',
         startTime: '',
         endTime: '',
         autoAssign: true,
         tableId: null
       },
-      availableTables: [], // 可选球台
+      availableTables: [],
       formLabelWidth: '100px',
-      myAppointments: [], // 我的预约列表
-      cancelCount: 0, // 取消次数
-      maxCancelCount: 3, // 最大取消次数
-      hasSchoolSchedule: false, // 校区是否有课表
-      scheduleCheckError: '' // 课表错误提示
+      myAppointments: [],
+      cancelCount: 0,
+      maxCancelCount: 3,
+      hasSchoolSchedule: false,
+      scheduleCheckError: '',
+      coachCancelRequests: [] // 新增：存储教练发起的取消申请
     }
   },
   created() {
-    this.fetchRelatedCoaches(); // 加载双选教练
-    this.checkAndFetchSchoolSchedule(); // 校验校区课表
+    this.fetchRelatedCoaches();
+    this.checkAndFetchSchoolSchedule();
+    this.fetchCoachCancelRequests(); // 新增：加载教练取消申请
   },
   methods: {
-    // ---------------------- 基础数据加载 ----------------------
-    // 加载双选教练列表
+    // 基础数据加载
     async fetchRelatedCoaches() {
       try {
         const res = await getRelatedCoaches(this.userId);
         this.relatedCoaches = res.data || [];
-        this.fetchMyAppointments(); // 同步更新我的预约
+        this.fetchMyAppointments();
       } catch (err) {
         Message.error(err.message || '获取教练列表失败');
       }
     },
 
-    // 校验并加载校区课表
     async checkAndFetchSchoolSchedule() {
       const loading = Loading.service({ text: '校验校区课表中...' });
       try {
-        // 1. 先校验校区是否有课表
         const checkRes = await checkSchoolHasSchedule(this.schoolId, this.role === 'SUPER_ADMIN');
         if (!checkRes.data) {
           this.scheduleCheckError = '当前校区未配置课表，无法预约';
@@ -339,7 +375,6 @@ export default {
           return;
         }
 
-        // 2. 校验通过，加载校区可预约时段
         const scheduleRes = await getSchoolSchedule(this.schoolId, this.role === 'super_admin');
         this.schoolTimeSlots = scheduleRes.data || [];
         if (this.schoolTimeSlots.length === 0) {
@@ -356,7 +391,6 @@ export default {
       }
     },
 
-    // 选择教练后加载其课表
     async handleCoachChange(coachId) {
       if (!coachId) return;
       this.selectedCoachId = coachId;
@@ -364,32 +398,29 @@ export default {
       await this.fetchCoachSchedule();
     },
 
-    // 加载教练已预约课表
     async fetchCoachSchedule() {
-      this.loadingSchedule = true;
-      try {
-        const res = await getCoachSchedule(this.selectedCoachId);
-        this.schedule = res.data || [];
-      } catch (err) {
-        Message.error(err.message || '获取教练课表失败');
-      } finally {
-        this.loadingSchedule = false;
+      if(this.selectedCoachId != null){
+        this.loadingSchedule = true;
+        try {
+          const res = await getCoachSchedule(this.selectedCoachId);
+          this.schedule = res.data || [];
+        } catch (err) {
+          Message.error(err.message || '获取教练课表失败');
+        } finally {
+          this.loadingSchedule = false;
+        }
       }
     },
 
-    // 加载我的预约列表
     async fetchMyAppointments() {
       try {
         const res = await getStudentAppointments(this.userId);
         const appointments = res.data || [];
         
-        // 关键逻辑：为每个预约项添加 coachName 字段
         this.myAppointments = appointments.map(appt => {
-          // 在 relatedCoaches 中查找对应教练
           const coach = this.relatedCoaches.find(c => c.id === appt.coachId);
           return {
             ...appt,
-            // 若找到教练则取姓名，否则显示"未知教练"
             coachName: coach ? coach.name : "未知教练"
           };
         });
@@ -398,8 +429,27 @@ export default {
       }
     },
 
-    // ---------------------- 预约交互逻辑 ----------------------
-    // 点击可预约时段，打开弹窗
+    // 新增：加载教练发起的取消申请
+    async fetchCoachCancelRequests() {
+      try {
+        // 获取用户类型为COACH的待处理取消申请
+        const res = await getPendingCancelRecords(this.userId, 'COACH');
+        // 为取消申请添加教练姓名
+        this.coachCancelRequests = res.data.map(req => {
+          const coach = this.relatedCoaches.find(
+            c => String(c.id) === String(req.coachId)
+          );
+          return {
+            ...req,
+            coachName: coach ? coach.name : `未知教练(${req.coachId})`
+          };
+        });
+      } catch (err) {
+        Message.error(err.message || '获取教练取消申请失败');
+      }
+    },
+
+    // 预约交互逻辑
     handleBookClick(dateObj, startTime, endTime) {
       this.bookForm = {
         date: this.formatDate(dateObj),
@@ -408,28 +458,23 @@ export default {
         autoAssign: true,
         tableId: null
       };
-      this.fetchAvailableTables(dateObj, startTime, endTime); // 加载可选球台
+      this.fetchAvailableTables(dateObj, startTime, endTime);
       this.showBookDialog = true;
     },
 
-    // 获取可选球台（实际项目需对接后端）
     async fetchAvailableTables(dateObj, startTime, endTime) {
-      // 模拟：忽略时段冲突，返回3个球台（实际需后端查询未占用球台）
       this.availableTables = [
         { id: 1 }, { id: 2 }, { id: 3 }
       ];
     },
 
-    // 切换自动/手动分配球台
     handleAutoAssignChange(val) {
       if (val) this.bookForm.tableId = null;
     },
 
-    // 提交预约
     async submitBooking() {
       const loading = Loading.service({ text: '提交预约中...' });
       try {
-        // 格式化时间为后端需要的格式（yyyy-MM-ddTHH:mm）
         const startTime = `${this.bookForm.date}T${this.bookForm.startTime}`;
         const endTime = `${this.bookForm.date}T${this.bookForm.endTime}`;
 
@@ -444,8 +489,8 @@ export default {
 
         Message.success('预约申请已提交，请等待教练确认');
         this.showBookDialog = false;
-        await this.fetchCoachSchedule(); // 刷新课表
-        await this.fetchMyAppointments(); // 新增：刷新「我的预约」列表
+        await this.fetchCoachSchedule();
+        await this.fetchMyAppointments();
       } catch (err) {
         Message.error(err.message || '预约失败');
       } finally {
@@ -453,7 +498,6 @@ export default {
       }
     },
 
-    // 申请取消预约
     async handleCancelRequest(appointmentId) {
       this.$confirm('确定要取消预约吗？', '提示', {
         confirmButtonText: '确定',
@@ -474,8 +518,23 @@ export default {
       });
     },
 
-    // ---------------------- 工具方法 ----------------------
-    // 格式化日期：yyyy-MM-dd
+    // 新增：处理教练发起的取消申请
+    async handleCancelApprove(cancelRecordId, approve) {
+      const loading = Loading.service({ text: '处理中...' });
+      try {
+        await handleCancelRequest(cancelRecordId, approve);
+        Message.success(approve ? '已同意取消' : '已拒绝取消');
+        this.fetchCoachCancelRequests(); // 刷新取消申请列表
+        this.fetchMyAppointments(); // 刷新预约列表
+        this.fetchCoachSchedule(); // 刷新课表
+      } catch (err) {
+        Message.error(err.message || '处理失败');
+      } finally {
+        loading.close();
+      }
+    },
+
+    // 工具方法
     formatDate(date) {
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -483,61 +542,51 @@ export default {
       return `${year}-${month}-${day}`;
     },
 
-    // 格式化时间：HH:mm（仅时间）
     formatTime(timeStr) {
       const date = new Date(timeStr);
       return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
     },
 
-    // 格式化完整时间：yyyy-MM-dd HH:mm（用于我的预约列表）
     formatFullTime(timeStr) {
       const date = new Date(timeStr);
       return `${this.formatDate(date)} ${this.formatTime(timeStr)}`;
     },
 
-    // 获取星期文本（周一~周日）
     getWeekDay(date) {
       const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
       return weekDays[date.getDay()];
     },
 
-    // 判断日期是否已过期（今天之前）
     isPastDate(dateObj) {
       const today = new Date();
-      today.setHours(0, 0, 0, 0); // 今天0点
-      return dateObj < today; // 目标日期 < 今天0点 → 已过期
+      today.setHours(0, 0, 0, 0);
+      return dateObj < today;
     },
 
-    // 检查时段是否有预约冲突
     hasAppointmentConflict(dateObj, startTime, endTime) {
       const targetDate = this.formatDate(dateObj);
       const targetStart = new Date(`${targetDate}T${startTime}`);
       const targetEnd = new Date(`${targetDate}T${endTime}`);
 
-      // 遍历已预约课程，判断是否重叠
       return this.schedule.some(appt => {
         const apptStart = new Date(appt.startTime);
         const apptEnd = new Date(appt.endTime);
-        // 冲突规则：目标时段与已预约时段有重叠（不包含首尾衔接）
         return apptStart < targetEnd && apptEnd > targetStart;
       });
     },
 
-    // ---------------------- 样式相关方法 ----------------------
-    // 获取已预约课程的样式（自己/他人）
+    // 样式相关方法
     getAppointmentClass(appointment) {
       return appointment.studentId === this.userId 
         ? 'own-appointment' 
         : 'other-appointment';
     },
 
-    // 获取可预约按钮的样式（可预约/已预约/自己预约）
     getSlotClass(dateObj, startTime, endTime) {
       if (!this.hasAppointmentConflict(dateObj, startTime, endTime)) {
-        return 'available-slot'; // 可预约
+        return 'available-slot';
       }
 
-      // 已预约：判断是否是自己的预约
       const targetDate = this.formatDate(dateObj);
       const targetStart = new Date(`${targetDate}T${startTime}`);
       const targetEnd = new Date(`${targetDate}T${endTime}`);
@@ -550,7 +599,6 @@ export default {
       return isOwn ? 'own-slot' : 'other-slot';
     },
 
-    // 获取预约状态文本（待确认/已确认等）
     getStatusText(status) {
       const map = {
         'PENDING_CONFIRM': '待教练确认',
@@ -562,7 +610,6 @@ export default {
       return map[status] || status;
     },
 
-    // 获取预约状态标签类型（warning/success等）
     getStatusTagType(status) {
       const map = {
         'PENDING_CONFIRM': 'warning',
@@ -574,10 +621,8 @@ export default {
       return map[status] || 'default';
     },
 
-    // 判断是否可取消预约（已确认+提前24小时+未超取消次数）
     canCancel(appointment) {
       if (appointment.status !== 'CONFIRMED') return false;
-      // 提前24小时判断
       const startTime = new Date(appointment.startTime);
       const now = new Date();
       const hoursDiff = (startTime - now) / (1000 * 60 * 60);
@@ -588,14 +633,14 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-/* 基础容器样式（与课表管理对齐） */
+/* 基础容器样式 */
 .course-booking-container {
   padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
 }
 
-/* 页面头部（标题+说明） */
+/* 页面头部 */
 .page-header {
   margin-bottom: 20px;
   h2 {
@@ -610,7 +655,7 @@ export default {
   }
 }
 
-/* 搜索卡片（选择教练） */
+/* 搜索卡片 */
 .search-card {
   margin-bottom: 20px;
   padding: 15px;
@@ -658,14 +703,14 @@ export default {
   padding: 4px 0;
 }
 
-/* 状态提示（已过期/无课表） */
+/* 状态提示 */
 .status-tip, .empty-tip {
   font-size: 12px;
   color: #999;
   padding: 8px 0;
 }
 
-/* 按钮样式（与课表管理对齐） */
+/* 按钮样式 */
 .available-slot {
   color: #1890ff;
   &:hover {
@@ -682,9 +727,20 @@ export default {
   cursor: not-allowed;
 }
 
+/* 取消申请卡片（新增） */
+.cancel-requests-card {
+  margin-bottom: 30px;
+}
+
 /* 我的预约列表卡片 */
 .appointments-card {
   margin-top: 30px;
+}
+
+/* 空状态样式（新增） */
+.empty {
+  margin: 40px 0;
+  text-align: center;
 }
 
 /* 表格单元格垂直居中 */

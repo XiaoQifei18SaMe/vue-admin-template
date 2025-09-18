@@ -139,20 +139,22 @@
         </el-table-column>
         <el-table-column label="操作" align="center" width="180">
           <template slot-scope="scope">
-            <el-button 
-              size="mini" 
-              type="success" 
-              @click="handleCancelApprove(scope.row.id, true)"
-            >
-              同意取消
-            </el-button>
-            <el-button 
-              size="mini" 
-              type="danger" 
-              @click="handleCancelApprove(scope.row.id, false)"
-            >
-              拒绝取消
-            </el-button>
+            <div style="display: flex; gap: 4px; justify-content: center;">
+              <el-button 
+                size="mini" 
+                type="success" 
+                @click="handleCancelApprove(scope.row.id, true)"
+              >
+                同意取消
+              </el-button>
+              <el-button 
+                size="mini" 
+                type="danger" 
+                @click="handleCancelApprove(scope.row.id, false)"
+              >
+                拒绝取消
+              </el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -213,7 +215,7 @@ export default {
             const student = this.relatedStudents.find(s => s.id === appt.studentId);
             return {
               ...appt,
-              studentName: student ? student.name : '未知学员' // 兜底显示
+              studentName: student ? student.name : `未知学员(${appt.studentId})` // 优化兜底信息
             };
           }
           return null;
@@ -275,12 +277,22 @@ export default {
      */
     async fetchCancelRequests() {
       try {
-        const res = await getPendingCancelRecords(this.userId, 'STUDENT'); // 按教练ID查询取消申请
-        this.cancelRequests = res.data || [];
+        const res = await getPendingCancelRecords(this.userId, 'STUDENT');
+        // 为取消申请添加申请人姓名
+        this.cancelRequests = res.data.map(req => {
+          const student = this.relatedStudents.find(
+            s => String(s.id) === String(req.studentId)
+          );
+          return {
+            ...req,
+            studentName: student ? student.name : `未知学员(${req.studentId})`
+          };
+        });
       } catch (err) {
         Message.error(err.message || '获取取消申请失败');
       }
     },
+
 
     // ---------------------- 预约处理逻辑 ----------------------
     /**
@@ -468,13 +480,39 @@ export default {
 .appointment-list {
   padding: 4px 0;
 }
+/* 预约项整体居中 */
 .appointment-item {
   font-size: 12px;
   padding: 8px;
   margin-bottom: 6px;
   border-radius: 4px;
   border-left: 3px solid transparent;
+  text-align: center; /* 新增：整体文本居中 */
 }
+
+/* 预约基础信息区居中 */
+.appt-base {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+  justify-content: center; /* 新增：内部元素水平居中 */
+}
+
+/* 操作按钮区居中 */
+.appt-actions {
+  display: flex;
+  justify-content: center; /* 修改：从flex-start改为center */
+  gap: 4px;
+  margin-top: 4px; /* 增加一点间距 */
+}
+
+/* 状态标签区居中 */
+.appt-status {
+  margin-bottom: 4px;
+  text-align: center; /* 确保状态标签居中 */
+}
+
 /* 待确认预约：黄色底色+橙色边框 */
 .pending-appointment {
   background-color: #fff8e6;
@@ -496,26 +534,13 @@ export default {
   border-left-color: #999;
 }
 
-/* 预约项内部布局 */
-.appt-base {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 4px;
-}
+
 .student-name, .time, .table {
   padding: 2px 4px;
   border-radius: 2px;
   background-color: rgba(255,255,255,0.6);
 }
-.appt-status {
-  margin-bottom: 4px;
-}
-.appt-actions {
-  display: flex;
-  justify-content: flex-start;
-  gap: 4px;
-}
+
 
 /* 空状态提示（与学生端一致） */
 .empty-tip, .empty {
