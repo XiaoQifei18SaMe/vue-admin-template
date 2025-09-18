@@ -29,10 +29,15 @@
           :data="scheduleForm.items"
           border
           style="width: 100%; margin: 20px 0;"
+          row-class-name="table-row"
         >
           <el-table-column label="星期" width="100">
             <template slot-scope="scope">
-              <el-select v-model="scope.row.dayOfWeek" placeholder="选择星期">
+              <el-select 
+                v-model="scope.row.dayOfWeek" 
+                placeholder="选择星期"
+                @change="handleItemValidate(scope.$index)"  
+              >
                 <el-option label="周一" value="1"></el-option>
                 <el-option label="周二" value="2"></el-option>
                 <el-option label="周三" value="3"></el-option>
@@ -43,6 +48,7 @@
               </el-select>
             </template>
           </el-table-column>
+          
           <el-table-column label="开始时间">
             <template slot-scope="scope">
               <el-time-picker
@@ -50,9 +56,11 @@
                 format="HH:mm"
                 value-format="HH:mm"
                 placeholder="选择开始时间"
+                @change="handleItemValidate(scope.$index)"  
               ></el-time-picker>
             </template>
           </el-table-column>
+          
           <el-table-column label="结束时间">
             <template slot-scope="scope">
               <el-time-picker
@@ -60,9 +68,11 @@
                 format="HH:mm"
                 value-format="HH:mm"
                 placeholder="选择结束时间"
+                @change="handleItemValidate(scope.$index)"  
               ></el-time-picker>
             </template>
           </el-table-column>
+          
           <el-table-column label="描述">
             <template slot-scope="scope">
               <el-input 
@@ -72,6 +82,14 @@
               ></el-input>
             </template>
           </el-table-column>
+          
+          <!-- 新增：错误提示列 -->
+          <el-table-column label="错误提示" width="220">
+            <template slot-scope="scope">
+              <span class="error-text">{{ scope.row.error }}</span>
+            </template>
+          </el-table-column>
+          
           <el-table-column label="操作" width="100">
             <template slot-scope="scope">
               <el-button
@@ -243,7 +261,8 @@ export default {
             // 确保dayOfWeek为字符串类型，与select组件值类型一致
             dayOfWeek: String(item.dayOfWeek),
             // 确保description有默认值
-            description: item.description || '默认训练时间'
+            description: item.description || '默认训练时间',
+            error: '',
           }))
           
           this.scheduleForm = {
@@ -253,6 +272,8 @@ export default {
           this.scheduleVisible = true
           this.selectedCampusIds = []
           this.selectAllCampus = false
+            // 加载后校验模板合法性
+          this.updateAllErrors();
         }
       } catch (error) {
         this.$message.error('获取默认课表失败')
@@ -265,13 +286,32 @@ export default {
         dayOfWeek: '1',
         startTime: '09:00',
         endTime: '10:00',
-        description: '默认训练时间'  // 新增行默认描述
+        description: '默认训练时间',  // 新增行默认描述
+        error: '',
       })
     },
     
     // 删除行
     handleDeleteRow(index) {
-      this.scheduleForm.items.splice(index, 1)
+      this.scheduleForm.items.splice(index, 1),
+      // 重新校验所有行，更新错误提示
+      this.updateAllErrors();
+    },
+
+    // 7. 辅助方法：更新所有行的错误提示
+    updateAllErrors() {
+      const errors = this.validateAllItems();
+      const items = [...this.scheduleForm.items];
+      
+      // 先清除所有错误
+      items.forEach(item => item.error = '');
+      
+      // 赋值新错误
+      errors.forEach(({ index, message }) => {
+        items[index].error = message;
+      });
+      
+      this.scheduleForm.items = items;
     },
     
     // 全选/取消全选
@@ -285,6 +325,18 @@ export default {
     
     // 应用课表到校区（串行检查并询问）
     async handleApplySchedule() {
+      // 步骤1：全量校验课表合法性
+      const allErrors = this.validateAllItems();
+      if (allErrors.length > 0) {
+        // 更新错误提示并阻断提交
+        this.updateAllErrors();
+        const errorMsg = allErrors
+          .map(({ index, message }) => `第${index + 1}行：${message}`)
+          .join('\n');
+        this.$message.error(`课表存在以下错误，请修正后提交：\n${errorMsg}`);
+        return;
+      }
+
       if (!this.selectedCampusIds.length) {
         this.$message.warning('请选择要应用的校区')
         return
@@ -419,6 +471,7 @@ export default {
             ...item,
             dayOfWeek: String(item.dayOfWeek),
             description: item.description || '默认训练时间',
+            error: '',
             id: undefined, 
           }))
 
@@ -436,6 +489,8 @@ export default {
           this.templateDialogVisible = false
           
           this.$message.success('模板加载成功')
+          // 加载后校验模板合法性
+          this.updateAllErrors();
         } else {
           this.$message.error(`获取模板失败: ${response.message || '未知错误'}`)
         }
@@ -446,8 +501,124 @@ export default {
         // 关闭加载提示（无论成功失败都要关闭）
         loading.close()
       }
+    },
+
+    // 1. 工具函数：将HH:mm格式转为分钟数（便于时间比较）
+    timeToMinutes(timeStr) {
+      if (!timeStr) return 0;
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
+    },
+    
+    // 2. 单行校验：检查单个时间段的合法性
+    validateSingleItem(item) {
+      // 校验时间是否填写
+      if (!item.startTime) return '请选择开始时间';
+      if (!item.endTime) return '请选择结束时间';
+      
+      // 校验开始时间是否早于结束时间
+      const startMin = this.timeToMinutes(item.startTime);
+      const endMin = this.timeToMinutes(item.endTime);
+      if (startMin >= endMin) return '开始时间必须早于结束时间';
+      
+      return ''; // 无错误
+    },
+    
+    // 3. 全量校验：检查所有时间段的合法性+同星期冲突
+    validateAllItems() {
+      const { items } = this.scheduleForm;
+      const errors = []; // 存储所有错误：[{index: 行索引, message: 错误信息}]
+      
+      // 步骤1：校验单个时间段合法性
+      items.forEach((item, index) => {
+        const errMsg = this.validateSingleItem(item);
+        if (errMsg) errors.push({ index, message: errMsg });
+      });
+      
+      // 步骤2：按星期分组，检查同星期内冲突
+      const weekGroup = {}; // 键：星期（1-7），值：该星期的所有时间段[{item, index}]
+      items.forEach((item, index) => {
+        const day = item.dayOfWeek;
+        if (!weekGroup[day]) weekGroup[day] = [];
+        weekGroup[day].push({ item, index });
+      });
+      
+      // 遍历每个星期的时间段，检查冲突
+      Object.values(weekGroup).forEach(group => {
+        group.forEach((current, i) => {
+          const { item: currItem, index: currIdx } = current;
+          // 跳过已存在单个错误的行（避免重复提示）
+          if (this.validateSingleItem(currItem)) return;
+          
+          // 与同组其他时间段比较
+          group.slice(i + 1).forEach(target => {
+            const { item: tarItem, index: tarIdx } = target;
+            if (this.validateSingleItem(tarItem)) return;
+            
+            const currStart = this.timeToMinutes(currItem.startTime);
+            const currEnd = this.timeToMinutes(currItem.endTime);
+            const tarStart = this.timeToMinutes(tarItem.startTime);
+            const tarEnd = this.timeToMinutes(tarItem.endTime);
+            
+            // 场景1：时间段完全重复
+            if (currStart === tarStart && currEnd === tarEnd) {
+              errors.push(
+                { index: currIdx, message: `与第${tarIdx + 1}行时间段完全重复` },
+                { index: tarIdx, message: `与第${currIdx + 1}行时间段完全重复` }
+              );
+            }
+            // 场景2：时间段部分重叠（核心逻辑：两个区间有交集即冲突）
+            else if (currStart < tarEnd && tarStart < currEnd) {
+              errors.push(
+                { index: currIdx, message: `与第${tarIdx + 1}行时间段重叠` },
+                { index: tarIdx, message: `与第${currIdx + 1}行时间段重叠` }
+              );
+            }
+          });
+        });
+      });
+      
+      return errors;
+    },
+    
+    // 4. 实时校验：单个时间段变更时触发（更新当前行错误）
+    handleItemValidate(index) {
+      const items = [...this.scheduleForm.items];
+      const currItem = items[index];
+      
+      // 先清除所有错误，再重新校验
+      items.forEach(item => item.error = '');
+      
+      // 校验当前行
+      currItem.error = this.validateSingleItem(currItem);
+      
+      // 校验同星期冲突（只校验当前行所在的星期）
+      const day = currItem.dayOfWeek;
+      const weekItems = items.filter((_, i) => items[i].dayOfWeek === day);
+      weekItems.forEach((item, i) => {
+        const itemIndex = items.findIndex((_, idx) => idx === items.indexOf(item));
+        if (itemIndex === index) return;
+        
+        const currStart = this.timeToMinutes(currItem.startTime);
+        const currEnd = this.timeToMinutes(currItem.endTime);
+        const itemStart = this.timeToMinutes(item.startTime);
+        const itemEnd = this.timeToMinutes(item.endTime);
+        
+        if (currStart === itemStart && currEnd === itemEnd) {
+          currItem.error = `与第${itemIndex + 1}行时间段完全重复`;
+          item.error = `与第${index + 1}行时间段完全重复`;
+        } else if (currStart < itemEnd && itemStart < currEnd) {
+          currItem.error = `与第${itemIndex + 1}行时间段重叠`;
+          item.error = `与第${index + 1}行时间段重叠`;
+        }
+      });
+      
+      this.scheduleForm.items = items;
     }
-  }
+
+
+  
+  },
 }
 </script>
 
@@ -466,5 +637,16 @@ export default {
 .empty-template {
   text-align: center;
   padding: 30px 0;
+}
+
+.error-text {
+  color: #F56C6C; /* Element UI错误色 */
+  font-size: 12px;
+  white-space: normal; /* 允许错误文本换行 */
+  line-height: 1.4;
+}
+
+.table-row {
+  height: 70px; /* 增加行高，避免错误提示换行后被压缩 */
 }
 </style>
