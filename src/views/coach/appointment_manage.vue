@@ -550,7 +550,7 @@ export default {
         try {
           await deleteEvaluation({
             evaluationId: commentId,
-            userId: this.userId // 教练ID（后端校验权限）
+            evaluatorId: this.userId // 教练ID（后端校验权限）
           });
           Message.success('评论删除成功');
           this.fetchAppointmentComments(appointmentId);

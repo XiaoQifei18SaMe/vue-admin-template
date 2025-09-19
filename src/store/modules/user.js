@@ -38,6 +38,9 @@ const mutations = {
   },
   SET_SCHOOLID: (state, schoolId) => {
     state.schoolId = schoolId
+  },
+  SET_REALNAME: (state, realname) => {
+    state.realname = realname
   }
 }
 
@@ -108,7 +111,7 @@ const actions = {
         }
 
         // 3. 从接口返回数据中提取角色信息（关键！）
-        const { username, avatar, role, schoolId, userId } = data
+        const { username, avatar, role, schoolId, userId, name } = data
         console.log("getinfo返回" + data)
         // 4. 存储角色信息（用于permission.js过滤路由）
         commit('SET_ROLE', role)
@@ -121,6 +124,7 @@ const actions = {
         // 5. 将完整用户信息返回（供登录后调用generateRoutes使用）
         commit('SET_USERID', userId)
         commit('SET_SCHOOLID', schoolId)
+        commit('SET_REALNAME',name)
         resolve(data)
       }).catch(error => {
         reject(error)
