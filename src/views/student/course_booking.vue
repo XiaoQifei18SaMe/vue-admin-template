@@ -194,7 +194,9 @@
         border
         stripe
         style="width: 100%;"
+        @cell-mouse-enter="handleCellHover"
       >
+        <!-- 原有列不变... -->
         <el-table-column prop="id" label="预约ID" width="80" align="center"></el-table-column>
         <el-table-column prop="coachName" label="教练" align="center"></el-table-column>
         <el-table-column prop="startTime" label="开始时间" align="center">
@@ -211,6 +213,92 @@
             </el-tag>
           </template>
         </el-table-column>
+
+        <!-- 新增：评论列 -->
+        <el-table-column label="评论" align="center" min-width="220">
+          <template slot-scope="scope">
+            <!-- 非已完成状态：提示未完成 -->
+            <div v-if="scope.row.status !== 'COMPLETED'" class="comment-status disabled">
+              课程未完成
+            </div>
+
+            <!-- 已完成状态：显示评论相关内容 -->
+            <div v-else class="comment-wrapper">
+              <!-- 加载中 -->
+              <div v-if="commentLoading[scope.row.id]" class="comment-loading">
+                <el-icon size="14"><Loading /></el-icon>
+                <span>加载中...</span>
+              </div>
+
+              <!-- 已加载评论 -->
+              <div v-else>
+                <!-- 无任何评论：显示“去评论”按钮 -->
+                <div v-if="!comments[scope.row.id] || comments[scope.row.id].length === 0" class="comment-empty">
+                  <el-button 
+                    size="mini" 
+                    type="text" 
+                    class="comment-btn"
+                    @click="handleCommentClick(scope.row, null)"
+                  >
+                    暂时未有评论，去评论
+                  </el-button>
+                </div>
+
+                <!-- 有评论：分开展示自己和教练的评论 -->
+                <div v-else class="comment-list">
+                  <!-- 1. 自己的评论 -->
+                  <div v-for="(com, idx) in comments[scope.row.id].filter(c => c.evaluatorId === userId)" :key="idx" class="comment-item own-comment">
+                    <div class="comment-header">
+                      <span class="commentor">我的评论</span>
+                      <span class="comment-time">{{ formatFullTime(com.updateTime) }}</span>
+                    </div>
+                    <div class="comment-content">{{ com.content }}</div>
+                    <div class="comment-actions">
+                      <el-button 
+                        size="mini" 
+                        type="text" 
+                        class="edit-btn"
+                        @click="handleCommentClick(scope.row, com)"
+                      >
+                        编辑
+                      </el-button>
+                      <el-button 
+                        size="mini" 
+                        type="text" 
+                        class="delete-btn"
+                        @click="handleCommentDelete(scope.row.id, com.id)"
+                      >
+                        删除
+                      </el-button>
+                    </div>
+                  </div>
+
+                  <!-- 2. 教练的评论（仅查看） -->
+                  <div v-for="(com, idx) in comments[scope.row.id].filter(c => c.evaluatorType === 'COACH')" :key="idx" class="comment-item coach-comment">
+                    <div class="comment-header">
+                      <span class="commentor">{{ scope.row.coachName }} 的评论</span>
+                      <span class="comment-time">{{ formatFullTime(com.createTime) }}</span>
+                    </div>
+                    <div class="comment-content">{{ com.content }}</div>
+                  </div>
+
+                  <!-- 3. 只有教练评论时，显示“去评论”按钮 -->
+                  <div v-if="comments[scope.row.id].every(c => c.evaluatorType === 'COACH')" class="add-comment-btn">
+                    <el-button 
+                      size="mini" 
+                      type="text" 
+                      class="comment-btn"
+                      @click="handleCommentClick(scope.row, null)"
+                    >
+                      + 发表我的评论
+                    </el-button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
+
         <el-table-column label="操作" align="center" width="120">
           <template slot-scope="scope">
             <el-button 
@@ -225,6 +313,40 @@
         </el-table-column>
       </el-table>
     </el-card>
+
+    <!-- 新增：评论弹窗（支持新增/编辑） -->
+    <el-dialog
+      :visible.sync="showCommentDialog"
+      :title="currentComment ? '编辑评论' : '发表评论'"
+      width="500px"
+      :close-on-click-modal="false"
+    >
+      <el-form :model="commentForm" ref="commentForm" label-width="80px">
+        <el-form-item 
+          label="评论内容" 
+          :rules="[{ required: true, message: '请输入评论内容', trigger: 'blur' }, { max: 500, message: '评论不超过500字', trigger: 'blur' }]"
+          prop="content"
+        >
+          <el-input
+            v-model="commentForm.content"
+            type="textarea"
+            rows="5"
+            placeholder="请输入对本次课程的评论..."
+          ></el-input>
+          <div class="word-count">{{ commentForm.content.length }}/500</div>
+        </el-form-item>
+      </el-form>
+      <div slot="footer">
+        <el-button @click="showCommentDialog = false">取消</el-button>
+        <el-button 
+          type="primary" 
+          @click="submitComment"
+          :loading="submitCommentLoading"
+        >
+          {{ currentComment ? '更新评论' : '提交评论' }}
+        </el-button>
+      </div>
+    </el-dialog>
 
     <!-- 5. 预约弹窗 -->
     <el-dialog
@@ -292,6 +414,13 @@
 </template>
 
 <script>
+// 新增：导入评论相关API
+import { 
+  getEvaluationsByAppointment, 
+  createEvaluation, 
+  updateEvaluation, 
+  deleteEvaluation 
+} from '@/api/evaluation'
 import { 
   getCoachSchedule, 
   bookCourse, 
@@ -309,11 +438,16 @@ import {
   getSchoolSchedule 
 } from '@/api/schedule'
 
+// 新增：引入加载图标
+// const { Loading: LoadingIcon } = Icon
+
 export default {
   name: 'CourseBooking',
+  
   computed: {
     ...mapGetters(['userId', 'role', 'schoolId']),
     groupedSchedule() {
+      // 原有逻辑不变...
       const futureWeek = [];
       for (let i = 0; i < 7; i++) {
         const dateObj = new Date();
@@ -339,6 +473,7 @@ export default {
   },
   data() {
     return {
+      // 原有数据不变...
       searchForm: { coachId: null },
       relatedCoaches: [],
       selectedCoachId: null,
@@ -359,19 +494,156 @@ export default {
       myAppointments: [],
       hasSchoolSchedule: false,
       scheduleCheckError: '',
-      coachCancelRequests: [], // 新增：存储教练发起的取消申请
-      remainingCancelCount: 3, // 剩余取消次数
-      maxCancelCount: 3,       // 最大取消次数
+      coachCancelRequests: [],
+      remainingCancelCount: 3,
+      maxCancelCount: 3,
+
+      // 新增：评论相关状态
+      comments: {}, // 存储评论：key=appointmentId，value=评论数组
+      commentLoading: {}, // 评论加载状态：key=appointmentId
+      showCommentDialog: false, // 评论弹窗显示状态
+      currentComment: null, // 当前编辑的评论（null为新增）
+      currentAppointmentId: null, // 当前操作的预约ID
+      commentForm: { // 评论表单
+        content: ''
+      },
+      submitCommentLoading: false, // 评论提交加载状态
+      hoveredRowId: null // 表格行hover状态（优化样式）
     }
   },
   created() {
     this.fetchRelatedCoaches();
     this.checkAndFetchSchoolSchedule();
-    this.fetchCoachCancelRequests(); // 新增：加载教练取消申请
-    this.fetchRemainingCancelCount(); // 新增：获取剩余取消次数
+    this.fetchCoachCancelRequests();
+    this.fetchRemainingCancelCount();
   },
   methods: {
-    // 新增：获取剩余取消次数
+    // 原有方法不变...
+
+    // 新增：表格行hover事件（优化评论区样式）
+    handleCellHover(row) {
+      this.hoveredRowId = row.id;
+    },
+
+    // 新增：获取指定预约的评论
+    async fetchAppointmentComments(appointmentId) {
+      // 标记加载中
+      this.$set(this.commentLoading, appointmentId, true);
+      try {
+        const res = await getEvaluationsByAppointment(appointmentId);
+        // 存储评论（按预约ID分组）
+        this.$set(this.comments, appointmentId, res.data || []);
+      } catch (err) {
+        Message.error(err.message || '加载评论失败');
+        this.$set(this.comments, appointmentId, []);
+      } finally {
+        // 取消加载状态
+        this.$set(this.commentLoading, appointmentId, false);
+      }
+    },
+
+    // 新增：评论点击事件（打开弹窗，区分新增/编辑）
+    handleCommentClick(appointment, comment) {
+      this.currentAppointmentId = appointment.id;
+      this.currentComment = comment;
+
+      // 初始化表单：编辑时填原有内容，新增时清空
+      this.commentForm = {
+        content: comment ? comment.content : ''
+      };
+
+      // 打开弹窗
+      this.showCommentDialog = true;
+    },
+
+    // 4. 修复评论提交时的API调用（确保用appt.id作为appointmentId）
+    async submitComment() {
+    const commentFormRef = this.$refs.commentForm;
+    if (!commentFormRef) return;
+    
+    commentFormRef.validate(async (isValid) => {
+      if (!isValid) return;
+      this.submitCommentLoading = true;
+      try {
+        if (this.currentComment) {
+          // 编辑评论：传递evaluationId、content、evaluatorId
+          await updateEvaluation({
+            evaluationId: this.currentComment.id,
+            content: this.commentForm.content, // 后端接口参数是content
+            evaluatorId: this.userId // 对应后端Controller是evaluator参数
+          });
+          Message.success('评论更新成功');
+        } else {
+          // 新增评论：用currentAppointmentId（即appt.id）作为appointmentId
+          await createEvaluation({ // 后端API是createEvaluation
+            appointmentId: this.currentAppointmentId,
+            evaluatorId: this.userId,
+            evaluatorType: 'STUDENT',
+            content: this.commentForm.content
+          });
+          Message.success('评论提交成功');
+        }
+        this.showCommentDialog = false;
+        this.fetchAppointmentComments(this.currentAppointmentId);
+      } catch (err) {
+        Message.error(err.message || (this.currentComment ? '更新评论失败' : '提交评论失败'));
+      } finally {
+        this.submitCommentLoading = false;
+      }
+    });
+    },
+
+    // 5. 修复删除评论的API参数（传递userId）
+    async handleCommentDelete(appointmentId, commentId) {
+      this.$confirm('确定要删除这条评论吗？删除后不可恢复', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(async () => {
+        try {
+          await deleteEvaluation({
+            evaluationId: commentId,
+            evaluatorId: this.userId // 后端需要userId做权限校验
+          });
+          Message.success('评论删除成功');
+          this.fetchAppointmentComments(appointmentId);
+        } catch (err) {
+          Message.error(err.message || '删除评论失败');
+        }
+      }).catch(() => {
+        Message.info('已取消删除');
+      });
+    },
+
+
+    async fetchMyAppointments() {
+      console.log("11111111111111111111111111111")
+      try {
+        const res = await getStudentAppointments(this.userId);
+        const appointments = res.data || [];
+        
+        this.myAppointments = appointments.map(appt => {
+          const coach = this.relatedCoaches.find(c => c.id === appt.coachId);
+          return {
+            ...appt,
+            coachName: coach ? coach.name : "未知教练"
+          };
+        });
+
+        console.log("为什么失败")
+        // 预加载已完成预约的评论（关键逻辑）
+        this.myAppointments.forEach(appt => {
+          if (appt.status === 'COMPLETED') {
+            console.log(appt.id)
+            this.fetchAppointmentComments(appt.id); // 用appt.id（后端返回的id）作为预约ID
+          }
+        });
+      } catch (err) {
+        Message.error(err.message || '获取我的预约失败');
+      }
+    },
+
+    // 以下原有方法不变...
     async fetchRemainingCancelCount() {
       try {
         const res = await getRemainingCancelCount(this.userId, 'STUDENT');
@@ -380,23 +652,19 @@ export default {
         Message.error(err.message || '获取剩余取消次数失败');
       }
     },
-
-    // 基础数据加载
     async fetchRelatedCoaches() {
       try {
         const res = await getRelatedCoaches(this.userId);
         this.relatedCoaches = res.data || [];
-        // 新增：如果有教练，默认选中第一个并加载其课表
         if (this.relatedCoaches.length > 0) {
           this.selectedCoachId = this.relatedCoaches[0].id;
-          this.handleCoachChange(this.selectedCoachId); // 触发课表加载
+          this.handleCoachChange(this.selectedCoachId);
         }
-        this.fetchMyAppointments();
+        this.fetchMyAppointments(); // 原有逻辑：获取预约后会自动加载评论
       } catch (err) {
         Message.error(err.message || '获取教练列表失败');
       }
     },
-
     async checkAndFetchSchoolSchedule() {
       const loading = Loading.service({ text: '校验校区课表中...' });
       try {
@@ -423,14 +691,12 @@ export default {
         loading.close();
       }
     },
-
     async handleCoachChange(coachId) {
       if (!coachId) return;
       this.selectedCoachId = coachId;
       this.selectedCoachName = this.relatedCoaches.find(c => c.id === coachId)?.name || '';
       await this.fetchCoachSchedule();
     },
-
     async fetchCoachSchedule() {
       if(this.selectedCoachId != null){
         this.loadingSchedule = true;
@@ -444,30 +710,10 @@ export default {
         }
       }
     },
-
-    async fetchMyAppointments() {
-      try {
-        const res = await getStudentAppointments(this.userId);
-        const appointments = res.data || [];
-        
-        this.myAppointments = appointments.map(appt => {
-          const coach = this.relatedCoaches.find(c => c.id === appt.coachId);
-          return {
-            ...appt,
-            coachName: coach ? coach.name : "未知教练"
-          };
-        });
-      } catch (err) {
-        Message.error(err.message || '获取我的预约失败');
-      }
-    },
-
-    // 新增：加载教练发起的取消申请
+   
     async fetchCoachCancelRequests() {
       try {
-        // 获取用户类型为COACH的待处理取消申请
         const res = await getPendingCancelRecords(this.userId, 'COACH');
-        // 为取消申请添加教练姓名
         this.coachCancelRequests = res.data.map(req => {
           const coach = this.relatedCoaches.find(
             c => String(c.id) === String(req.coachId)
@@ -481,8 +727,6 @@ export default {
         Message.error(err.message || '获取教练取消申请失败');
       }
     },
-
-    // 预约交互逻辑
     handleBookClick(dateObj, startTime, endTime) {
       this.bookForm = {
         date: this.formatDate(dateObj),
@@ -494,17 +738,14 @@ export default {
       this.fetchAvailableTables(dateObj, startTime, endTime);
       this.showBookDialog = true;
     },
-
     async fetchAvailableTables(dateObj, startTime, endTime) {
       this.availableTables = [
         { id: 1 }, { id: 2 }, { id: 3 }
       ];
     },
-
     handleAutoAssignChange(val) {
       if (val) this.bookForm.tableId = null;
     },
-
     async submitBooking() {
       const loading = Loading.service({ text: '提交预约中...' });
       try {
@@ -530,7 +771,6 @@ export default {
         loading.close();
       }
     },
-
     async handleCancelRequest(appointmentId) {
       this.$confirm('确定要取消预约吗？', '提示', {
         confirmButtonText: '确定',
@@ -542,7 +782,7 @@ export default {
           Message.success('取消申请已提交');
           await this.fetchMyAppointments();
           await this.fetchCoachSchedule();
-          await this.fetchRemainingCancelCount(); // 新增：刷新剩余次数
+          await this.fetchRemainingCancelCount();
         } catch (err) {
           Message.error(err.message || '取消申请失败');
         }
@@ -550,55 +790,45 @@ export default {
         Message.info('已取消操作');
       });
     },
-
-    // 新增：处理教练发起的取消申请
     async handleCancelApprove(cancelRecordId, approve) {
       const loading = Loading.service({ text: '处理中...' });
       try {
         await handleCancelRequest(cancelRecordId, approve);
         Message.success(approve ? '已同意取消' : '已拒绝取消');
-        this.fetchCoachCancelRequests(); // 刷新取消申请列表
-        this.fetchMyAppointments(); // 刷新预约列表
-        this.fetchCoachSchedule(); // 刷新课表
+        this.fetchCoachCancelRequests();
+        this.fetchMyAppointments();
+        this.fetchCoachSchedule();
       } catch (err) {
         Message.error(err.message || '处理失败');
       } finally {
         loading.close();
       }
     },
-
-    // 工具方法
     formatDate(date) {
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
     },
-
     formatTime(timeStr) {
       const date = new Date(timeStr);
       return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
     },
-
     formatFullTime(timeStr) {
       const date = new Date(timeStr);
       return `${this.formatDate(date)} ${this.formatTime(timeStr)}`;
     },
-
     getWeekDay(date) {
       const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
       return weekDays[date.getDay()];
     },
-
     isPastDate(dateObj) {
       const today = new Date();
-      today.setHours(0, 0, 0, 0); // 今天0点
+      today.setHours(0, 0, 0, 0);
       const targetDate = new Date(dateObj);
-      targetDate.setHours(0, 0, 0, 0); // 目标日期0点
-      // 当天及之前的日期都视为已过期
+      targetDate.setHours(0, 0, 0, 0);
       return targetDate <= today;
     },
-
     hasAppointmentConflict(dateObj, startTime, endTime) {
       const targetDate = this.formatDate(dateObj);
       const targetStart = new Date(`${targetDate}T${startTime}`);
@@ -610,14 +840,11 @@ export default {
         return apptStart < targetEnd && apptEnd > targetStart;
       });
     },
-
-    // 样式相关方法
     getAppointmentClass(appointment) {
       return appointment.studentId === this.userId 
         ? 'own-appointment' 
         : 'other-appointment';
     },
-
     getSlotClass(dateObj, startTime, endTime) {
       if (!this.hasAppointmentConflict(dateObj, startTime, endTime)) {
         return 'available-slot';
@@ -634,29 +861,28 @@ export default {
 
       return isOwn ? 'own-slot' : 'other-slot';
     },
-
     getStatusText(status) {
       const map = {
         'PENDING_CONFIRM': '待教练确认',
         'CONFIRMED': '已确认',
         'REJECTED': '已拒绝',
         'CANCEL_REQUESTED': '已申请取消',
-        'CANCELLED': '已取消'
+        'CANCELLED': '已取消',
+        'COMPLETED': '已完成'
       };
       return map[status] || status;
     },
-
     getStatusTagType(status) {
       const map = {
         'PENDING_CONFIRM': 'warning',
         'CONFIRMED': 'success',
         'REJECTED': 'danger',
         'CANCEL_REQUESTED': 'info',
-        'CANCELLED': 'default'
+        'CANCELLED': 'default',
+        'COMPLETED': 'success'
       };
       return map[status] || 'default';
     },
-
     canCancel(appointment) {
       if (appointment.status !== 'CONFIRMED') return false;
       const startTime = new Date(appointment.startTime);
@@ -669,8 +895,159 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+/* 原有样式不变，新增以下评论相关样式 */
 
+// 评论列基础样式
+.comment-wrapper {
+  width: 100%;
+  padding: 4px 0;
+}
 
+// 评论加载状态
+.comment-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 12px;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+// 无评论状态
+.comment-empty {
+  text-align: center;
+  padding: 8px 0;
+}
+
+// 评论按钮通用样式
+.comment-btn {
+  color: #409eff !important;
+  font-size: 12px !important;
+  padding: 4px 8px !important;
+  &:hover {
+    color: #2563eb !important;
+    background-color: #e6f7ff !important;
+  }
+}
+
+// 评论列表容器
+.comment-list {
+  width: 100%;
+  max-height: 180px;
+  overflow-y: auto;
+  padding-right: 4px;
+  margin-bottom: 8px;
+  // 自定义滚动条
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: #ddd;
+    border-radius: 2px;
+  }
+}
+
+// 单个评论项
+.comment-item {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  background-color: #f9fafb;
+}
+
+// 自己的评论样式（蓝色调）
+.own-comment {
+  border-left: 3px solid #409eff;
+  background-color: #f0f7ff;
+}
+
+// 教练的评论样式（绿色调）
+.coach-comment {
+  border-left: 3px solid #22c55e;
+  background-color: #f0fdf4;
+}
+
+// 评论头部（评论人+时间）
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  color: #666;
+  .commentor {
+    font-weight: 500;
+    &.own {
+      color: #409eff;
+    }
+    &.coach {
+      color: #22c55e;
+    }
+  }
+  .comment-time {
+    color: #999;
+    font-size: 11px;
+  }
+}
+
+// 评论内容
+.comment-content {
+  color: #333;
+  line-height: 1.4;
+  margin-bottom: 6px;
+  word-break: break-all;
+}
+
+// 评论操作区（编辑/删除）
+.comment-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  .edit-btn {
+    color: #409eff !important;
+    font-size: 11px !important;
+    &:hover {
+      color: #2563eb !important;
+    }
+  }
+  .delete-btn {
+    color: #f5222d !important;
+    font-size: 11px !important;
+    &:hover {
+      color: #dc2626 !important;
+    }
+  }
+}
+
+// 新增评论按钮（仅教练有评论时显示）
+.add-comment-btn {
+  text-align: center;
+  margin-top: 6px;
+}
+
+// 非已完成状态的评论列样式
+.comment-status.disabled {
+  text-align: center;
+  color: #999;
+  font-size: 12px;
+  padding: 8px 0;
+}
+
+// 评论弹窗样式
+.word-count {
+  text-align: right;
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+}
+
+// 表格行hover时评论区背景优化
+.el-table__row:hover .comment-item {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+/* 原有样式不变... */
 .cancel-count-info {
   margin-top: 8px;
   font-size: 14px;
@@ -686,14 +1063,11 @@ export default {
     font-weight: bold;
   }
 }
-/* 基础容器样式 */
 .course-booking-container {
   padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
 }
-
-/* 页面头部 */
 .page-header {
   margin-bottom: 20px;
   h2 {
@@ -707,19 +1081,13 @@ export default {
     font-size: 14px;
   }
 }
-
-/* 搜索卡片 */
 .search-card {
   margin-bottom: 20px;
   padding: 15px;
 }
-
-/* 课表卡片 */
 .schedule-card {
   margin-bottom: 30px;
 }
-
-/* 已预约课程列表样式 */
 .appointment-list {
   padding: 4px 0;
 }
@@ -747,23 +1115,17 @@ export default {
   color: #52c41a;
   margin-top: 2px;
 }
-
-/* 可预约时段按钮容器 */
 .available-slots {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   padding: 4px 0;
 }
-
-/* 状态提示 */
 .status-tip, .empty-tip {
   font-size: 12px;
   color: #999;
   padding: 8px 0;
 }
-
-/* 按钮样式 */
 .available-slot {
   color: #1890ff;
   &:hover {
@@ -779,24 +1141,16 @@ export default {
   color: #f5222d;
   cursor: not-allowed;
 }
-
-/* 取消申请卡片（新增） */
 .cancel-requests-card {
   margin-bottom: 30px;
 }
-
-/* 我的预约列表卡片 */
 .appointments-card {
   margin-top: 30px;
 }
-
-/* 空状态样式（新增） */
 .empty {
   margin: 40px 0;
   text-align: center;
 }
-
-/* 表格单元格垂直居中 */
 .el-table__cell {
   vertical-align: middle !important;
 }

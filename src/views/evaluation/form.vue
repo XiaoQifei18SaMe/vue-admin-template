@@ -40,8 +40,10 @@ export default {
       default: false
     },
     appointmentId: {
-      type: Number,
-      required: true
+      type: Number, // 明确类型为Number
+      required: true,
+      default: 0, // 增加默认值，避免Null
+      validator: (value) => value >= 0 // 校验值合法
     },
     evaluatorId: {
       type: Number,

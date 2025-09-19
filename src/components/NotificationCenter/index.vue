@@ -77,8 +77,8 @@ export default {
       unreadCount: 0,
       loading: false,
       showEvaluationForm: false,
-      currentAppointmentId: null,
-      currentNotificationId: null
+      currentAppointmentId: 0,
+      currentNotificationId: 0
     }
   },
   computed: {
