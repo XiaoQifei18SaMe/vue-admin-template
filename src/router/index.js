@@ -349,7 +349,7 @@ export const asyncRoutes = [
         path: '',
         name: 'CourseBooking',
         component: () => import('@/views/student/course_booking'),
-        meta: { title: '课程预约', roles: ['student'], icon: 'user' }
+        meta: { title: '课程预约', icon: 'user' }
       }
     ]
   },
@@ -365,9 +365,26 @@ export const asyncRoutes = [
         path: '',
         name: 'AppointmentManage',
         component: () => import('@/views/coach/appointment_manage'),
-        meta: { title: '预约管理', roles: ['coach'], icon: 'user'}
+        meta: { title: '预约管理', icon: 'user'}
       }
     ]
+  },
+
+  {
+    path: '/evaluation/list',
+    component: Layout,
+    meta: {
+      roles: ['coach','student']
+    },
+    children: [
+      {
+        path: '',
+        name: 'EvaluationList',
+        component: () => import('@/views/evaluation/list'),
+        meta: { title: '训练评价', icon: 'table'}
+      }
+    ]
+
   },
   
   // 404 page must be placed at the end !!!

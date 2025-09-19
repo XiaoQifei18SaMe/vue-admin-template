@@ -5,6 +5,7 @@
     <breadcrumb class="breadcrumb-container" />
 
     <div class="right-menu">
+      <notification-center class="notification-item" />
       <el-dropdown class="avatar-container" trigger="click">
         <div class="avatar-wrapper">
           <img :src="avatar+'?imageView2/1/w/80/h/80'" class="user-avatar">
@@ -26,6 +27,7 @@
             <span style="display:block;">Log Out</span>
           </el-dropdown-item>
         </el-dropdown-menu>
+        
       </el-dropdown>
     </div>
   </div>
@@ -35,11 +37,13 @@
 import { mapGetters } from 'vuex'
 import Breadcrumb from '@/components/Breadcrumb'
 import Hamburger from '@/components/Hamburger'
+import NotificationCenter from '@/components/NotificationCenter'
 
 export default {
   components: {
     Breadcrumb,
-    Hamburger
+    Hamburger,
+    NotificationCenter
   },
   computed: {
     ...mapGetters([
@@ -133,6 +137,15 @@ export default {
           font-size: 12px;
         }
       }
+    }
+  }
+}
+
+.navbar {
+  .right-menu {
+    .notification-item {
+      display: inline-block;
+      margin-right: 15px; // 与右侧用户头像保持距离
     }
   }
 }
