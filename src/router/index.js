@@ -293,6 +293,11 @@ export const asyncRoutes = [
         path: '/my_coaches',
         component: () => import('@/views/student/my_coaches'),
         meta: { title: '我的教练', icon: 'user'}
+      },
+      {
+        path: '/coach_change',
+        component: () => import('@/views/student/coach_change'),
+        meta: { title: '更换申请', icon: 'phone'}
       }
     
     ]
@@ -314,9 +319,30 @@ export const asyncRoutes = [
         path: '/my_students',
         component: () => import('@/views/coach/my_students'),
         meta: { title: '我的学生', icon: 'user'}
+      },
+      {
+        path: '/coach_change_manage',
+        component: () => import('@/views/coach/coach_change_manage'),
+        meta: { title: '更换管理', icon: 'phone'}
       }
     ]
 
+  },
+
+  {
+    path: '/admin/coach-change-manage',
+    component: Layout,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/admin/coach_change_manage'),
+        meta: {
+          title: '更换审批',
+          roles: ['admin', 'super_admin'], // 允许管理员和超级管理员访问
+          icon: 'phone'
+        },
+      }
+    ]
   },
 
   {

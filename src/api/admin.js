@@ -50,3 +50,38 @@ export function toggleCoachStatus(id, status) {
     }
   })
 }
+
+/**
+ * 按校区ID获取教练列表（管理员接口）
+ * @param {String} token - 管理员token
+ * @param {Number} schoolId - 校区ID
+ * @returns {Promise} - 包含教练列表的响应
+ */
+export function getCoachesBySchoolId(token, schoolId) {
+  return request({
+    url: '/admin/get_coaches_by_school',
+    method: 'get',
+    params: {
+      token,
+      schoolId
+    }
+  })
+}
+
+/**
+ * 按校区ID获取学生列表（管理员接口）
+ * @param {String} token - 管理员token
+ * @param {Number} schoolId - 校区ID
+ * @returns {Promise} - 包含学生列表的响应
+ */
+export function getStudentsBySchoolId(token, schoolId) {
+  return request({
+    url: '/admin/get_students_by_school',
+    method: 'get',
+    params: {
+      token,
+      schoolId
+    }
+  })
+}
+    
