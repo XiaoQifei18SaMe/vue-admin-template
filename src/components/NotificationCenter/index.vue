@@ -1,54 +1,87 @@
 <template>
   <div class="notification-center">
-    <el-badge :value="unreadCount" class="notification-badge">
-      <el-button icon="el-icon-bell" circle @click="showNotifications = true"></el-button>
+    <el-badge 
+      :value="unreadCount" 
+      class="notification-badge"
+      :max="99"
+    >
+      <el-button 
+        icon="el-icon-bell" 
+        circle 
+        @click="showNotifications = !showNotifications"
+      ></el-button>
     </el-badge>
-    
+
     <el-drawer
       title="通知中心"
       :visible.sync="showNotifications"
-      direction="rtl"
-      size="30%"
+      :with-header="false"
+      size="500px"
+      placement="top"
     >
       <div v-if="loading" class="loading-state">
         <el-loading-spinner></el-loading-spinner>
-        <p>加载中...</p>
+        <p>加载通知中...</p>
       </div>
       
+      <!-- 替换 Element Plus 图标为 Element UI 2.x 自带图标 -->
       <div v-else-if="notifications.length === 0" class="empty-state">
-        暂无通知
+        <el-icon class="el-icon-bell-off"></el-icon>
+        <p>暂无通知</p>
       </div>
       
-      <div v-else class="notification-list">
-        <el-scrollbar style="height: 500px;">
-          <div 
-            v-for="notification in notifications" 
-            :key="notification.id"
-            :class="['notification-item', !notification.read ? 'unread' : '']"
-          >
-            <div class="notification-content">{{ notification.content }}</div>
-            <div class="notification-time">{{ formatTime(notification.createTime) }}</div>
-            <div class="notification-actions">
+      <el-scrollbar v-else class="notification-list">
+        <div 
+          v-for="notification in notifications" 
+          :key="notification.id"
+          :class="['notification-item', { 'unread': !notification.read }]"
+        >
+          <div class="notification-content">
+            {{ notification.content }}
+          </div>
+          <div class="notification-time">
+            {{ formatTime(notification.createTime) }}
+          </div>
+          <div class="notification-actions">
+            <!-- 根据通知类型显示不同操作 -->
+            <template v-if="notification.type === 'COURSE_EVALUATION'">
               <el-button 
                 size="mini" 
-                type="text"
+                type="text" 
                 @click="handleEvaluation(notification)"
-                v-if="notification.content.includes('评价')"
               >
                 去评价
               </el-button>
               <el-button 
                 size="mini" 
-                type="text"
-                @click="markAsRead(notification.id)"
-                v-if="!notification.read"
+                type="text" 
+                @click="gotoAppointment(notification.appointmentId)"
               >
-                标记已读
+                查看预约
               </el-button>
-            </div>
+            </template>
+            
+            <template v-if="notification.type === 'COACH_CHANGE_REQUEST' && !notification.read">
+              <el-button 
+                size="mini" 
+                type="text" 
+                @click="gotoChangeRequest(notification.changeRequestId)"
+              >
+                处理申请
+              </el-button>
+            </template>
+            
+            <el-button 
+              size="mini" 
+              type="text" 
+              @click="markAsRead(notification.id)"
+              v-if="!notification.read"
+            >
+              标记已读
+            </el-button>
           </div>
-        </el-scrollbar>
-      </div>
+        </div>
+      </el-scrollbar>
     </el-drawer>
     
     <evaluation-form
@@ -63,12 +96,14 @@
 </template>
 
 <script>
+// 删除 Element Plus 图标库引用
 import { getUnreadNotifications, markNotificationAsRead } from '@/api/notification'
 import EvaluationForm from '@/views/evaluation/form'
 
 export default {
   components: {
-    EvaluationForm
+    EvaluationForm,
+    // 删除 Element Plus 图标组件注册
   },
   data() {
     return {
@@ -78,11 +113,11 @@ export default {
       loading: false,
       showEvaluationForm: false,
       currentAppointmentId: 0,
-      currentNotificationId: 0
+      currentNotificationId: 0,
+      notificationTimer: null
     }
   },
   computed: {
-    // 移除userInfo计算属性，直接使用已有的getter
     userId() {
       return this.$store.getters.userId
     },
@@ -90,32 +125,28 @@ export default {
       return this.$store.getters.role
     },
     userType() {
-      // 基于role直接判断用户类型
-      return this.role === 'student' ? 'STUDENT' : 'COACH'
+      return this.role === 'student' ? 'STUDENT' : 
+             this.role === 'coach' ? 'COACH' : 'ADMIN'
     }
   },
   created() {
-    // 定时轮询检查新通知
     this.fetchNotifications()
+    // 每分钟检查一次新通知
     this.notificationTimer = setInterval(() => {
       this.fetchNotifications()
-    }, 60000) // 每分钟检查一次
+    }, 60000)
   },
   beforeDestroy() {
     clearInterval(this.notificationTimer)
   },
   methods: {
     async fetchNotifications() {
-      // 改为检查userId是否存在
       if (!this.userId) return
       
       this.loading = true
       try {
-        // 使用userId和userType作为参数
-        console.log("fetchNotifications " + this.userType)
         const res = await getUnreadNotifications(this.userId, this.userType)
         this.notifications = res.data || []
-        console.log("res = " + this.notifications)
         this.unreadCount = this.notifications.filter(n => !n.read).length
       } catch (error) {
         console.error('获取通知失败:', error)
@@ -146,13 +177,41 @@ export default {
     
     onEvaluationSubmitted() {
       this.showEvaluationForm = false
-      this.fetchNotifications() // 刷新通知列表
+      this.fetchNotifications()
     },
     
     formatTime(time) {
       if (!time) return ''
       const date = new Date(time)
       return date.toLocaleString()
+    },
+    
+    // 跳转到预约详情
+    gotoAppointment(appointmentId) {
+      this.showNotifications = false
+      this.$router.push({ 
+        path: this.role === 'student' ? '/student/course-booking' : '/coach/appointment-manage',
+        query: { id: appointmentId }
+      })
+    },
+    
+    // 跳转到更换教练申请处理页面
+    gotoChangeRequest(requestId) {
+      this.showNotifications = false
+      console.log("currole " + this.role)
+      if (this.role === 'student') {
+        this.$router.push({ path: '/coach_change' })
+      } else if (this.role === 'coach') {
+        this.$router.push({ 
+          path: '/coach_change_manage',
+          query: { id: requestId }
+        })
+      } else if (this.role === 'admin' || this.role === 'super_admin') {
+        this.$router.push({ 
+          path: '/admin/coach_change_manage',
+          query: { id: requestId }
+        })
+      }
     }
   }
 }
@@ -165,6 +224,7 @@ export default {
 
 .notification-list {
   padding: 10px 0;
+  height: calc(100vh - 100px);
 }
 
 .notification-item {
@@ -176,8 +236,13 @@ export default {
   background-color: #f5f7fa;
 }
 
+.notification-item.read {
+  color: #999;
+}
+
 .notification-content {
   margin-bottom: 10px;
+  line-height: 1.5;
 }
 
 .notification-time {
@@ -198,5 +263,11 @@ export default {
 
 .loading-state .el-loading-spinner {
   margin-bottom: 15px;
+}
+
+/* 调整空状态图标大小（可选） */
+.empty-state .el-icon-bell-off {
+  font-size: 24px;
+  margin-bottom: 10px;
 }
 </style>

@@ -145,10 +145,15 @@ export default {
       loading: false
     }
   },
-  created() {
-    this.fetchCurrentCoaches()
-    this.fetchSchoolCoaches()
-    this.fetchRequestHistory()
+  // 关键修改：用 async/await 控制异步顺序
+  // 调整执行顺序：先获取当前教练，再获取校区教练（依赖当前教练列表进行过滤）
+  async created() {
+    // 1. 先获取当前教练列表（必须先完成）
+    await this.fetchCurrentCoaches()
+    // 2. 基于当前教练列表，获取并过滤校区教练
+    await this.fetchSchoolCoaches()
+    // 3. 最后获取申请历史（依赖前两个接口的数据）
+    await this.fetchRequestHistory()
   },
   methods: {
     handleImgError(e) {
@@ -194,10 +199,14 @@ export default {
         Message.error(err.message || '获取当前教练失败')
       }
     },
-    async fetchSchoolCoaches() {
+   async fetchSchoolCoaches() {
       try {
         const res = await getSchoolCoaches(this.userId)
-        this.schoolCoaches = res.data || []
+        // 过滤掉当前教练列表中已存在的教练
+        this.schoolCoaches = (res.data || []).filter(coach => 
+          // 检查当前教练列表中是否存在该教练ID，不存在则保留
+          !this.currentCoaches.some(currentCoach => currentCoach.id === coach.id)
+        )
       } catch (err) {
         Message.error(err.message || '获取校区教练失败')
       }

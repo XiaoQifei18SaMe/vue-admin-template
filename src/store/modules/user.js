@@ -12,7 +12,7 @@ const getDefaultState = () => {
     userId: null,
     schoolId: null,
     realname: '',
-    userType: null
+    userType: '',
   }
 }
 
@@ -70,6 +70,7 @@ const actions = {
   login({ commit }, userInfo) {
     // 移除解构，直接使用 userInfo
     return new Promise((resolve, reject) => {
+      commit('RESET_STATE')
       login(userInfo).then(response => { // 直接传递整个 userInfo
         const { data } = response
         commit('SET_TOKEN', data)
