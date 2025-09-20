@@ -11,7 +11,7 @@ export function getStudentApplications(coachId) {
   // 获取学员详情
   export function getStudentDetail(studentId) {
     return request({
-      url: '/student/detail',
+      url: '/coach/get_student_detail',
       method: 'get',
       params: { studentId }
     })

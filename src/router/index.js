@@ -281,38 +281,53 @@ export const asyncRoutes = [
     path: '/student/coach_select',
     component: Layout,
     meta: {
-      roles: ['student']
+      title: '教练广场', roles: ['student'], icon: 'money-wallet'
     },
-    children: [{
-      path: '',
-      component: () => import('@/views/student/coach_select'),
-      meta: { title: '选择教练', icon: 'role' }
-    }]
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/student/coach_select'),
+        meta: { title: '选择教练', icon: 'role' }
+      },
+      {
+        path: '/my_coaches',
+        component: () => import('@/views/student/my_coaches'),
+        meta: { title: '我的教练', icon: 'user'}
+      }
+    
+    ]
   },
 
   {
-    path: '/coach/student_audit',
+    path: '/coach',
     component: Layout,
     meta: {
-      roles: ['coach']
+      title: '学生广场', roles: ['coach'], icon: 'money-wallet'
     },
-    children: [{
-      path: '',
-      component: () => import('@/views/coach/student_audit'),
-      meta: { title: '审核学生', icon: 'role' }
-    }]
+    children: [
+      {
+        path: '/student_audit',
+        component: () => import('@/views/coach/student_audit'),
+        meta: { title: '审核学生', icon: 'role' }
+      },
+      {
+        path: '/my_students',
+        component: () => import('@/views/coach/my_students'),
+        meta: { title: '我的学生', icon: 'user'}
+      }
+    ]
 
   },
 
   {
-    path: '/student',
+    path: '/student/recharge',
     component: Layout,
     meta: {
       roles: ['student']
     },
     children: [
       {
-        path: 'recharge',
+        path: '',
         name: 'StudentRecharge',
         component: () => import('@/views/student/recharge'),
         meta: { title: '账户充值', icon: 'money-wallet' }
