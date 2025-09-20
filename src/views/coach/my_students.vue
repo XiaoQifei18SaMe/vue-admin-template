@@ -16,7 +16,7 @@
       <el-table-column prop="id" label="ID" width="80" align="center"></el-table-column>
       <el-table-column prop="name" label="姓名" align="center"></el-table-column>
       <el-table-column label="性别" align="center">
-        <template #default="scope">{{ scope.row.male ? '男' : '女' }}</template>
+        <template #default="scope">{{ scope.row.isMale ? '男' : '女' }}</template>
       </el-table-column>
       <el-table-column prop="age" label="年龄" align="center"></el-table-column>
       <el-table-column prop="phone" label="联系电话" align="center"></el-table-column>
@@ -75,7 +75,7 @@
                 </div>
                 <div class="detail-item">
                   <span class="item-label">性别</span>
-                  <span class="item-value">{{ currentStudent.male ? '男' : '女' }}</span>
+                  <span class="item-value">{{ currentStudent.isMale ? '男' : '女' }}</span>
                 </div>
                 <div class="detail-item">
                   <span class="item-label">年龄</span>
