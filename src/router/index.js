@@ -427,6 +427,23 @@ export const asyncRoutes = [
     ]
 
   },
+
+  // 在教练相关路由中添加
+  {
+    path: '/coach/account',
+    component: Layout,
+    meta: {
+      roles: ['coach'] // 仅教练可见
+    },
+    children: [
+      {
+        path: '',
+        name: 'CoachAccount',
+        component: () => import('@/views/coach/account'),
+        meta: { title: '账户管理', icon: 'money-wallet' }
+      }
+    ]
+  },
   
   // 404 page must be placed at the end !!!
   { path: '*', redirect: '/', hidden: true }
