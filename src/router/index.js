@@ -278,7 +278,36 @@ export const asyncRoutes = [
 
   },
  
-  
+  {
+    path: '/admin/recharge',
+    component: Layout,
+    
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/admin/recharge'),
+        meta: {
+          roles: ['admin'], title: '充值管理', icon: 'money-wallet'
+        },
+      }
+    ]
+  },
+
+  {
+    path: '/super_admin/recharge',
+    component: Layout,
+    
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/super_admin/recharge'),
+        meta: {
+          roles: ['super_admin'], title: '充值管理', icon: 'money-wallet'
+        },
+      }
+    ]
+
+  },
 
   {
     path: '/student',

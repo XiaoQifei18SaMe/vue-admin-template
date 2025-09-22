@@ -123,4 +123,22 @@ export function updateCertifiedCoach(token, coach) {
     data: coach
   })
 }
-    
+
+
+
+/**
+ * 管理员给学生线下充值（核心新增接口）
+ * @param {Number} studentId - 目标学生ID（需属于管理员管辖校区）
+ * @param {Number} amount - 充值金额（需大于0，单位与系统货币一致）
+ * @returns {Promise} - 包含充值记录的响应（如订单ID、充值时间、学生余额等）
+ */
+export function adminOfflineRecharge(studentId, amount) {
+  return request({
+    url: '/admin/recharge', // 与后端接口URL完全匹配
+    method: 'post',
+    params: {  // 这里使用params而不是data
+      studentId, 
+      amount 
+    }
+  })
+}

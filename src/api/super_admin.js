@@ -134,3 +134,14 @@ export function updateCertifiedCoach(token, coach) {
     data: coach
   })
 }
+
+export function superAdminOfflineRecharge(studentId, amount) {
+  return request({
+    url: '/super_admin/recharge', // 与后端接口URL完全匹配
+    method: 'post',
+    params: {  // 这里使用params而不是data
+      studentId, 
+      amount 
+    }
+  })
+}

@@ -50,7 +50,9 @@
         <el-table-column prop="amount" label="金额" align="center">
           <template slot-scope="scope">
             <span :class="scope.row.type === 'COURSE_INCOME' ? 'income' : 'expense'">
-              {{ scope.row.type === 'COURSE_INCOME' ? '+' : '-' }}¥{{ scope.row.amount.toFixed(2) }}
+              {{ scope.row.type === 'COURSE_INCOME' ? '+' : '-' }}¥{{ 
+                (scope.row.type === 'COURSE_INCOME' ? scope.row.amount : Math.abs(scope.row.amount)).toFixed(2) 
+              }}
             </span>
           </template>
         </el-table-column>
