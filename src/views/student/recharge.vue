@@ -273,7 +273,7 @@ export default {
       try {
         const res = await getPaymentRecords({
           studentId: this.userId,
-          page: this.page - 1,// 关键：前端页码减1传给后端
+          page: this.page,// 关键：前端页码减1传给后端
           size: this.size,
           status: this.transactionStatus,
           method: this.paymentMethodFilter

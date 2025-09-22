@@ -237,45 +237,28 @@ export const asyncRoutes = [
       meta: { title: '教练审核', icon: 'user' }
     }]
   },
-
-  // 1. 超级管理员专属：校区管理
-  // {
-  //   path: '/campusold',
-  //   component: Layout,
-  //   name: 'CampusManagement',
-  //   meta: { 
-  //     title: '校区管理', 
-  //     icon: 'campus',
-  //     roles: ['super_admin'] // 仅超级管理员可见
-  //   },
-  //   children: [
-  //     { path: 'list', component: () => import('@/views/campusold/list'), meta: { title: '校区列表', icon : 'campus'} },
-  //     { path: 'create', component: () => import('@/views/campusold/create'), meta: { title: '创建校区', icon : 'campus'} },
-  //     { path: 'edit/:id', component: () => import('@/views/campusold/edit'), meta: { title: '编辑校区', icon : 'campus'} }
-  //   ]
-  // },
-  // 2. 管理员通用：个人信息管理
   {
-    path: '/admin',
+    path: '/admin/manageinfo',
     component: Layout,
-    name: 'AdminManagement',
-    meta: { 
-      title: '管理员中心', 
-      icon: 'user',
-      roles: ['admin', 'campus_admin'] // 超级管理员和校区管理员可见
+    meta: {
+      roles: ['admin'], title: '信息管理', icon: 'user'
     },
     children: [
-      { path: 'profile', component: () => import('@/views/admin/profile'), meta: { title: '个人信息' } },
-      { 
-        path: 'list', 
-        component: () => import('@/views/admin/list'), 
-        meta: { 
-          title: '管理员列表',
-          roles: ['admin'] // 仅超级管理员可见
-        } 
+      {
+        path: 'student',
+        component: () => import('@/views/admin/student_manage'),
+        meta: { title: '学生信息', icon: 'user'}
+      },
+      {
+        path: 'coach',
+        component: () => import('@/views/admin/coach_manage'),
+        meta: { title: '教练信息', icon: 'user'}
       }
     ]
+
   },
+ 
+  
 
   {
     path: '/student',

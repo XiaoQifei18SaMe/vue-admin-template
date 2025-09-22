@@ -84,4 +84,43 @@ export function getStudentsBySchoolId(token, schoolId) {
     }
   })
 }
+
+
+// 查看所辖校区学生列表（分页）
+export function getManagedStudents(params) {
+  return request({
+    url: '/admin/students',
+    method: 'get',
+    params
+  })
+}
+
+// 查看所辖校区已认证教练列表（分页）
+export function getManagedCertifiedCoaches(params) {
+  return request({
+    url: '/admin/certified-coaches',
+    method: 'get',
+    params
+  })
+}
+
+// 更新学生信息
+export function updateStudent(token, student) {
+  return request({
+    url: '/admin/update-student',
+    method: 'post',
+    params: { token },
+    data: student
+  })
+}
+
+// 更新已认证教练信息
+export function updateCertifiedCoach(token, coach) {
+  return request({
+    url: '/admin/update-certified-coach',
+    method: 'post',
+    params: { token },
+    data: coach
+  })
+}
     
