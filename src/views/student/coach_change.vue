@@ -216,10 +216,13 @@ export default {
         const res = await getRelatedRequests(this.userId, this.userType)
         const requests = res.data || []
         
-        // 补充教练名称
+        // 关键修改：合并“当前教练”和“校区非当前教练”，得到“校区内所有教练”
+        const allCampusCoaches = [...this.currentCoaches, ...this.schoolCoaches]
+        
+        // 从合并后的列表中匹配教练名称（避免遗漏）
         this.requestHistory = requests.map(req => {
-          const currentCoach = this.schoolCoaches.find(c => c.id === req.currentCoachId)
-          const targetCoach = this.schoolCoaches.find(c => c.id === req.targetCoachId)
+          const currentCoach = allCampusCoaches.find(c => c.id === req.currentCoachId)
+          const targetCoach = allCampusCoaches.find(c => c.id === req.targetCoachId)
           return {
             ...req,
             currentCoachName: currentCoach ? currentCoach.name : `未知教练(${req.currentCoachId})`,

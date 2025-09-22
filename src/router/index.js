@@ -257,6 +257,26 @@ export const asyncRoutes = [
     ]
 
   },
+  {
+    path: '/super_admin/manageinfo',
+    component: Layout,
+    meta: {
+      roles: ['super_admin'], title: '信息管理', icon: 'user'
+    },
+    children: [
+      {
+        path: 'student',
+        component: () => import('@/views/super_admin/student_manage'),
+        meta: { title: '学生信息', icon: 'user'}
+      },
+      {
+        path: 'coach',
+        component: () => import('@/views/super_admin/coach_manage'),
+        meta: { title: '教练信息', icon: 'user'}
+      }
+    ]
+
+  },
  
   
 

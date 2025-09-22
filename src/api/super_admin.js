@@ -96,3 +96,41 @@ export function superCertifyCoach(coachId, isAccepted, level) {
     }
   })
 }
+
+// 分页查询所有校区学生（支持筛选）
+export function getAllStudents(params) {
+  return request({
+    url: '/super_admin/all-students',
+    method: 'get',
+    params
+  })
+}
+
+// 分页查询所有已认证教练（支持筛选）
+export function getAllCertifiedCoaches(params) {
+  return request({
+    url: '/super_admin/all-certified-coaches',
+    method: 'get',
+    params
+  })
+}
+
+// 超级管理员更新学生信息
+export function updateStudent(token, student) {
+  return request({
+    url: '/super_admin/update-student',
+    method: 'post',
+    params: { token },
+    data: student
+  })
+}
+
+// 超级管理员更新已认证教练信息
+export function updateCertifiedCoach(token, coach) {
+  return request({
+    url: '/super_admin/update-certified-coach',
+    method: 'post',
+    params: { token },
+    data: coach
+  })
+}
