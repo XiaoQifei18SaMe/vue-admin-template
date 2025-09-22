@@ -155,6 +155,7 @@ export default {
         schoolname: '',
         address: '',
         adminId: null, // 管理员ID
+        name: '',      // 新增：存储管理员名字（需传递给后端）
         phone: '',     // 联系电话（可与管理员电话不同）
         email: '',     // 联系邮箱（可与管理员邮箱不同）
         table_num: 1
@@ -169,7 +170,7 @@ export default {
           { max: 200, message: '校区地址最长200个字符', trigger: 'blur' }
         ],
         adminId: [
-          { required: true, message: '请选择管理员', trigger: 'change' }
+          { required: false, message: '请选择管理员', trigger: 'change' }
         ],
         phone: [
           { required: true, message: '请输入联系电话', trigger: 'blur' },
@@ -192,7 +193,7 @@ export default {
   methods: {
     getAdminName(adminId) {
       const admin = this.adminList.find(item => item.id === adminId)
-      return admin ? admin.name : '未分配'
+      return admin ? admin.name : '(超管代理)'
     },
     // 获取所有校区列表
     async fetchSchools() {
@@ -236,6 +237,7 @@ export default {
         schoolname: '',
         address: '',
         adminId: null,
+        name: '', // 新增：初始化name为空
         phone: '',
         email: '',
         table_num: 1
@@ -250,6 +252,9 @@ export default {
     handleEdit(row) {
       this.dialogTitle = '编辑校区'
       this.formData = { ...row }
+      // 关键：根据adminId获取管理员名字，赋值给formData.name
+      const admin = this.adminList.find(item => item.id === row.adminId);
+      this.formData.name = admin ? admin.name : ''; // 无管理员时清空name
       // 编辑时默认不勾选（避免误操作覆盖已有数据）
       this.syncContactInfo = false
       this.dialogVisible = true
@@ -262,6 +267,10 @@ export default {
         // 只有勾选了同步才更新联系方式
         this.formData.phone = selectedAdmin.phone
         this.formData.email = selectedAdmin.email
+        this.formData.name = selectedAdmin.name; // 关键：赋值管理员名字到name字段
+      }else {
+        // 未选择管理员或取消同步时，清空name字段（避免残留旧值）
+        this.formData.name = '';
       }
     },
 
