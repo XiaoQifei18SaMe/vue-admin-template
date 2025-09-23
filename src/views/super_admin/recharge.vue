@@ -218,8 +218,8 @@ export default {
       try {
         const params = {
           token: this.token,
-          page: this.currentPage,
-          size: this.pageSize,
+          pageNum: this.currentPage,
+          pageSize: this.pageSize,
           schoolId: this.selectedSchoolId || '',
           name: this.studentName || ''
         }
