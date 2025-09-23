@@ -24,3 +24,13 @@ export default {
     })
   }
 }
+
+export function getTablesBySchoolId(schoolId) {
+  return request({
+    url: '/table/by-school',
+    method: 'get',
+    params: {
+      schoolId // 后端接口要求的参数名，与@RequestParam保持一致
+    }
+  })
+}

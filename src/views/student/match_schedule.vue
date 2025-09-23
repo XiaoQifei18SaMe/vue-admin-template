@@ -50,7 +50,7 @@
           align="center"
           width="120"
         >
-          <template slot-scope="scope">
+          <template>
             <el-tag type="success" size="mini">已支付</el-tag>
           </template>
         </el-table-column>

@@ -431,6 +431,7 @@ import {
   getRemainingCancelCount
 } from '@/api/appointment'
 import { getRelatedCoaches } from '@/api/student'
+import { getTablesBySchoolId } from '@/api/table'
 import { Message, Loading } from 'element-ui'
 import { mapGetters } from 'vuex'
 import { 
@@ -739,9 +740,15 @@ export default {
       this.showBookDialog = true;
     },
     async fetchAvailableTables(dateObj, startTime, endTime) {
-      this.availableTables = [
-        { id: 1 }, { id: 2 }, { id: 3 }
-      ];
+      try {
+        // 从Vuex获取当前校区ID（已在computed中定义schoolId）
+        const res = await getTablesBySchoolId(this.schoolId)
+        // 后端返回格式为Result<List<TableEntity>>，数据在res.data中
+        this.availableTables = res.data || []
+      } catch (err) {
+        this.availableTables = []
+        this.$message.error(err.message || '获取球台列表失败')
+      }
     },
     handleAutoAssignChange(val) {
       if (val) this.bookForm.tableId = null;

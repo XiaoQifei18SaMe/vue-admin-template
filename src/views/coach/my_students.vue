@@ -36,7 +36,7 @@
       <el-button 
         type="primary" 
         style="margin-top: 15px;"
-        @click="$router.push('/coach/student_audit')"
+        @click="$router.push('/student_audit')"
       >
         查看学员申请
       </el-button>
