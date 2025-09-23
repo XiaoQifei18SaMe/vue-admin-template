@@ -7,3 +7,20 @@ export function getList(params) {
     params
   })
 }
+
+
+
+/**
+ * 球台相关API（用于获取球台名称）
+ */
+export default {
+  /**
+   * 获取所有球台列表（含ID和名称）
+   */
+  getAllTables() {
+    return request({
+      url: '/table/all',
+      method: 'get'
+    })
+  }
+}

@@ -477,6 +477,23 @@ export const asyncRoutes = [
     ]
   },
   
+  {
+    path: '/match',
+    component: Layout,
+    meta: {
+      roles: ['student'], title: '乒乓月赛', icon: 'user'
+    },
+    children: [{
+      path: 'registration',
+      component: () => import('@/views/student/match_registration'),
+      meta: { title: '月赛报名', icon: 'user'}
+    },
+      {
+        path: 'schedule',
+        component: () => import('@/views/student/match_schedule'),
+        meta: { title: '查看赛程', icon: 'table'}
+    }]
+  },
   // 404 page must be placed at the end !!!
   { path: '*', redirect: '/', hidden: true }
 ]

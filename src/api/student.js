@@ -55,3 +55,16 @@ export function getRelatedCoaches(studentId) {
     params: { studentId }
   })
 }
+
+
+  /**
+   * 根据ID查询学生信息
+   * @param {number} studentId - 学生ID
+   */
+export function getStudentById(studentId) {
+    return request({
+      url: '/student/get-by-id',
+      method: 'get',
+      params: { studentId }
+    })
+  }
