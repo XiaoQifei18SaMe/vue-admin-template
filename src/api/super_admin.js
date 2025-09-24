@@ -177,3 +177,11 @@ export function verifyActivation() {
     params: { deviceId } // 作为请求参数传给后端
   })
 }
+
+export function getActivationExpiry(data) {
+  return request({
+    url: '/super_admin/get_activation_expiry',
+    method: 'get',
+    params: data // { token, deviceId }
+  })
+}
