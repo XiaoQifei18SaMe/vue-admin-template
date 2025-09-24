@@ -93,3 +93,82 @@ export default {
     })
   }
 }
+
+
+/**
+ * 管理员创建新比赛
+ * @param {Object} data - 比赛信息
+ * @param {string} data.title - 比赛标题
+ * @param {string} data.startTime - 比赛开始时间(ISO格式字符串)
+ * @param {string} data.registrationDeadline - 报名截止时间(ISO格式字符串)
+ */
+export function createMonthlyMatch(data) {
+  return request({
+    url: '/monthly-match/admin/create',
+    method: 'post',
+    params: data
+  })
+}
+
+/**
+ * 管理员更新比赛信息
+ * @param {Object} data - 比赛信息
+ * @param {number} data.matchId - 比赛ID
+ * @param {string} [data.title] - 比赛标题(可选)
+ * @param {string} [data.startTime] - 比赛开始时间(可选)
+ * @param {string} [data.registrationDeadline] - 报名截止时间(可选)
+ * @param {string} [data.status] - 比赛状态(可选)
+ */
+export function updateMonthlyMatch(data) {
+  return request({
+    url: '/monthly-match/admin/update',
+    method: 'put',
+    params: data
+  })
+}
+
+/**
+ * 管理员获取所有比赛
+ * @param {Object} [params] - 筛选参数
+ * @param {number} [params.year] - 年份筛选
+ * @param {number} [params.month] - 月份筛选
+ */
+export function getAllMonthlyMatches(params = {}) {
+  return request({
+    url: '/monthly-match/admin/all',
+    method: 'get',
+    params
+  })
+}
+
+/**
+ * 管理员手动触发赛程安排
+ * @param {number} matchId - 比赛ID
+ */
+export function arrangeMatchSchedule(matchId) {
+  return request({
+    url: '/monthly-match/admin/arrange-schedule',
+    method: 'post',
+    params: { matchId }
+  })
+}
+
+/**
+ * 新增：管理员获取某比赛的全量赛程
+ * @param {number} matchId - 月赛ID
+ */
+export function getAdminMatchSchedule(matchId) {
+  return request({
+    url: '/monthly-match/admin/schedule',
+    method: 'get',
+    params: { matchId } // 传递月赛ID
+  })
+}
+
+export function getMatchById(matchId) {
+  return request({
+    url: '/monthly-match/get-match',
+    method: 'get',
+    params: { matchId } // 确保传递matchId参数
+  })
+}

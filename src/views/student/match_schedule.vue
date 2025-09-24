@@ -172,12 +172,12 @@
       </el-table>
     </el-card>
 
-    <!-- 无赛程提示 -->
+    <!-- 无赛程提示（根据status显示不同文案） -->
     <div 
       v-if="selectedRegistration && !loadingSchedules && formattedSchedules.length === 0" 
       class="no-schedules"
     >
-      <el-empty description="报名尚未截止，赛程将在截止后自动生成"></el-empty>
+      <el-empty :description="getNoScheduleDesc()"></el-empty>
     </div>
   </div>
 </template>
@@ -222,7 +222,7 @@ export default {
   },
   methods: {
     /**
-     * 1. 获取学生已报名的月赛记录
+     * 1. 获取学生已报名的月赛记录（补充月赛status字段）
      */
     async fetchStudentRegistrations() {
       this.loadingRegistrations = true
@@ -235,7 +235,7 @@ export default {
           return
         }
 
-        // 步骤2：为每个报名记录补充月赛详情（调用后端单个月赛接口）
+        // 步骤2：补充月赛详情（重点：获取monthlyMatch的status字段）
         const filledRegistrations = await Promise.all(
           registrations.map(async (reg) => {
             const matchRes = await matchApi.getMatchById(reg.monthlyMatchId)
@@ -245,7 +245,8 @@ export default {
               monthlyMatchTitle: match.title || '未知比赛',
               matchStartTime: match.startTime || null,
               matchDeadline: match.registrationDeadline || null,
-              matchStatus: match.status || 'UNKNOWN'
+              // 关键：存储月赛的status（对应后端MatchStatus枚举）
+              matchStatus: match.status || 'UNKNOWN' 
             }
           })
         )
@@ -275,22 +276,29 @@ export default {
     },
 
     /**
-     * 3. 点击报名记录，加载对应的赛程
+     * 3. 点击报名记录加载赛程（核心：基于status判断是否允许加载）
      */
     async handleRegistrationClick(registration) {
       this.selectedRegistration = registration
       this.rawSchedules = []
       this.formattedSchedules = []
+      const matchStatus = registration.matchStatus // 月赛当前状态
 
-      // 校验：报名未截止，提示无法查看
-      const now = new Date()
-      const deadline = new Date(registration.matchDeadline)
-      if (now < deadline) {
-        Message.info(`该月赛报名尚未截止（截止时间：${this.formatDateTime(registration.matchDeadline)}），截止后将生成赛程`)
+      // 仅当状态为【REGISTRATION_CLOSED（报名截止）】时，才加载赛程
+      if (matchStatus !== 'REGISTRATION_CLOSED') {
+        // 根据不同状态显示对应提示
+        const tipMap = {
+          'NOT_STARTED': '该月赛尚未开始报名，赛程暂未生成',
+          'REGISTERING': '该月赛仍在报名中，赛程将在报名截止后生成',
+          'ONGOING': '该月赛正在进行中，赛程已同步更新',
+          'COMPLETED': '该月赛已结束，赛程已归档',
+          'UNKNOWN': '该月赛状态未知，无法加载赛程'
+        }
+        Message.info(tipMap[matchStatus] || '无法加载赛程，请稍后重试')
         return
       }
 
-      // 加载赛程
+      // 状态为REGISTRATION_CLOSED，加载赛程
       this.loadingSchedules = true
       try {
         const res = await matchApi.getStudentMatchSchedule({
@@ -298,8 +306,7 @@ export default {
           studentId: this.userId
         })
         this.rawSchedules = res.data || []
-        // 格式化赛程（补充选手姓名、球台名称）
-        await this.formatSchedules()
+        await this.formatSchedules() // 格式化赛程数据
       } catch (err) {
         Message.error(`获取赛程失败：${err.message || '接口异常'}`)
         this.formattedSchedules = []
@@ -328,7 +335,7 @@ export default {
         await Promise.all(
           Array.from(needFetchPlayerIds).map(async (playerId) => {
             try {
-              const res = await getStudentById(playerId) // 假设接口：根据ID查学生
+              const res = await getStudentById(playerId)
               const name = res.data?.name || `未知选手(${playerId})`
               this.playerNameCache.set(playerId, name)
             } catch (err) {
@@ -348,28 +355,27 @@ export default {
     },
 
     /**
-     * 5. 显示选手信息（弹窗或其他方式，这里简化为提示）
+     * 5. 显示选手信息（弹窗提示）
      */
-   async showPlayerInfo(studentId) {
-  try {
-    const res = await getStudentById(studentId)
-    const student = res.data || {}
-    // 关键：使用「完整配置对象」，显式指定 message 和 dangerouslyUseHTMLString
-    Message.info({
-      message: `
-        选手信息：<br>
-        姓名：${student.name || '未知'}<br>
-        学号：${student.id || '未设置'}<br>  
-        校区：${student.schoolId ? `学校ID: ${student.schoolId}` : '未知'}<br>  
-        联系方式：${student.phone || '未设置'}
-      `,
-      dangerouslyUseHTMLString: true,  // 生效：允许解析HTML标签
-      duration: 3000  // 可选：延长提示显示时间，方便查看
-    })
-  } catch (err) {
-    Message.error(`获取选手信息失败：${err.message}`)
-  }
-},
+    async showPlayerInfo(studentId) {
+      try {
+        const res = await getStudentById(studentId)
+        const student = res.data || {}
+        Message.info({
+          message: `
+            选手信息：<br>
+            姓名：${student.name || '未知'}<br>
+            学号：${student.id || '未设置'}<br>  
+            校区：${student.schoolId ? `学校ID: ${student.schoolId}` : '未知'}<br>  
+            联系方式：${student.phone || '未设置'}
+          `,
+          dangerouslyUseHTMLString: true,
+          duration: 3000
+        })
+      } catch (err) {
+        Message.error(`获取选手信息失败：${err.message}`)
+      }
+    },
 
     /**
      * 辅助方法：组别枚举转中文（GROUP_A → 甲组）
@@ -384,28 +390,53 @@ export default {
     },
 
     /**
-     * 辅助方法：赛程状态文本（未截止/已生成）
+     * 辅助方法：赛程状态文本（基于后端MatchStatus枚举）
      */
     getScheduleStatusText(registration) {
-      const now = new Date()
-      const deadline = new Date(registration.matchDeadline)
-      if (now < deadline) {
-        return '未截止'
+      const statusMap = {
+        'NOT_STARTED': '未开始报名',    // 初始状态：未到报名时间
+        'REGISTERING': '报名中',        // 报名中：已到报名时间+未过截止时间
+        'REGISTRATION_CLOSED': '报名已截止', // 报名截止：已过截止时间（可看赛程）
+        'ONGOING': '比赛进行中',        // 比赛进行中
+        'COMPLETED': '比赛已结束',      // 比赛结束
+        'UNKNOWN': '未知状态'
       }
-      return '已生成'
+      return statusMap[registration.matchStatus] || '未知状态'
     },
 
     /**
-     * 辅助方法：赛程状态标签类型（未截止→info，已生成→success）
+     * 辅助方法：赛程状态标签类型（匹配状态语义的颜色）
      */
     getScheduleStatusType(registration) {
-      const now = new Date()
-      const deadline = new Date(registration.matchDeadline)
-      return now < deadline ? 'info' : 'success'
+      const typeMap = {
+        'NOT_STARTED': 'info',         // 未开始报名→蓝色（常规信息）
+        'REGISTERING': 'primary',      // 报名中→深蓝色（强调可操作）
+        'REGISTRATION_CLOSED': 'warning', // 报名已截止→黄色（提醒）
+        'ONGOING': 'success',          // 比赛进行中→绿色（活跃）
+        'COMPLETED': 'success',        // 比赛已结束→绿色（完成）
+        'UNKNOWN': 'default'
+      }
+      return typeMap[registration.matchStatus] || 'default'
     },
 
     /**
-     * 辅助方法：比赛结果转中文（NOT_STARTED → 未开始）
+     * 辅助方法：无赛程时的提示文案（根据status动态生成）
+     */
+    getNoScheduleDesc() {
+      const matchStatus = this.selectedRegistration.matchStatus
+      const descMap = {
+        'REGISTRATION_CLOSED': '报名已截止，赛程暂未生成，请稍后刷新',
+        'ONGOING': '比赛进行中，部分赛程暂未更新',
+        'COMPLETED': '比赛已结束，暂无该组别赛程记录',
+        'NOT_STARTED': '未开始报名，赛程暂未生成',
+        'REGISTERING': '报名中，赛程将在截止后生成',
+        'UNKNOWN': '暂无赛程数据，请稍后重试'
+      }
+      return descMap[matchStatus] || '暂无赛程数据，请稍后重试'
+    },
+
+    /**
+     * 辅助方法：比赛结果转中文
      */
     getResultText(result) {
       const resultMap = {
@@ -418,7 +449,7 @@ export default {
     },
 
     /**
-     * 辅助方法：比赛结果标签类型（未开始→info，胜利→success，失败→danger）
+     * 辅助方法：比赛结果标签类型（区分自身胜负）
      */
     getResultType(result) {
       if (!this.selectedRegistration || !result) return 'info'

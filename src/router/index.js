@@ -6,6 +6,7 @@ Vue.use(Router)
 /* Layout */
 import Layout from '@/layout'
 import { title } from '@/settings'
+import MatchScheduleAdmin from '@/views/admin/match_schedule' 
 
 /**
  * Note: sub-menu only appear when route children.length >= 1
@@ -493,6 +494,44 @@ export const asyncRoutes = [
         component: () => import('@/views/student/match_schedule'),
         meta: { title: '查看赛程', icon: 'table'}
     }]
+  },
+
+  {
+    path: '/match_manage',
+    component: Layout,
+   
+    children: [{
+      path: '',
+      component: () => import('@/views/admin/monthly_match_manage'),
+      meta: {
+        roles: ['admin', 'super_admin'], title: '比赛管理', icon: 'user'
+      },
+    },
+    ]
+  },
+
+  // 2. 新增：管理员赛程详情路由（放在比赛管理路由之后，404之前）
+  {
+    path: '/match-schedule/:matchId', // 动态路由参数：matchId（月赛ID）
+    component: Layout, // 继承Layout布局（保持侧边栏和顶部导航一致）
+    hidden: true, // 关键：设为true，不在侧边栏显示（通过“查看赛程”按钮跳转，非侧边栏菜单）
+    meta: {
+      roles: ['admin', 'super_admin'], // 仅管理员/超级管理员可访问
+      title: '赛程详情', // 面包屑和页面标题显示
+      // icon: 'table' // 可选：若需在侧边栏显示则加，这里隐藏所以可省略
+    },
+    children: [
+      {
+        path: '', // 子路由默认路径（匹配父路由完整路径）
+        name: 'MatchScheduleAdmin',
+        component: MatchScheduleAdmin, // 关联赛程详情组件
+        props: true, // 允许路由参数（matchId）通过props传递给组件
+        meta: {
+          title: '赛程详情', // 子路由标题（与父路由一致，确保面包屑正确）
+          activeMenu: '/match_manage' // 关键：跳转后侧边栏“比赛管理”高亮
+        }
+      }
+    ]
   },
   // 404 page must be placed at the end !!!
   { path: '*', redirect: '/', hidden: true }
