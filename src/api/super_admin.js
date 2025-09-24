@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import { getDeviceId } from '@/utils/device' 
 
 //获取管理员列表
 export function getAdmins() {
@@ -143,5 +144,36 @@ export function superAdminOfflineRecharge(studentId, amount) {
       studentId, 
       amount 
     }
+  })
+}
+
+
+export function payServiceFee(superAdminId) {
+  return request({
+    url: '/super_admin/pay_service_fee',
+    method: 'get',
+    params: { superAdminId } // 关键：用 params 传递，拼到 URL 后（如 ?superAdminId=1）
+  });
+}
+
+// 激活系统
+export function activateSystem(data) {
+  return request({
+    url: '/super_admin/activate_system',
+    method: 'post',
+    params: {
+      superAdminId: data.superAdminId, // 匹配后端 superAdminId
+      deviceId: data.deviceId          // 匹配后端 deviceId
+    }
+  })
+}
+
+// 验证系统是否已激活
+export function verifyActivation() {
+  const deviceId = getDeviceId(); // 获取当前设备的deviceId
+  return request({
+    url: '/super_admin/verify_activation',
+    method: 'get',
+    params: { deviceId } // 作为请求参数传给后端
   })
 }

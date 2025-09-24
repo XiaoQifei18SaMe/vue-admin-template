@@ -533,8 +533,24 @@ export const asyncRoutes = [
       }
     ]
   },
+
+  {
+    path: '/super_admin/activation',
+    component: Layout,
+    meta: {
+      roles: ['super_admin'] // 仅超级管理员可见
+    },
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/super_admin/activation'),
+        meta: { title: '系统激活', icon: 'lock' }
+      }
+    ]
+  },
   // 404 page must be placed at the end !!!
   { path: '*', redirect: '/', hidden: true }
+
 ]
 const createRouter = () => new Router({
   // mode: 'history', // require service support
