@@ -102,12 +102,12 @@
         >
           <template slot-scope="scope">
             <!-- 已过期日期：禁用 -->
-            <div v-if="isPastDate(scope.row.dateObj)" class="status-tip">
+            <!-- <div v-if="isPastDate(scope.row.dateObj)" class="status-tip">
               {{ scope.row.dateObj.toDateString() === new Date().toDateString() ? '今日不可预约' : '已过期' }}
-            </div>
+            </div> -->
             
             <!-- 有校区课表：展示可预约按钮 -->
-            <div v-else-if="hasSchoolSchedule" class="available-slots">
+            <div v-if="hasSchoolSchedule" class="available-slots">
               <template v-for="slot in schoolTimeSlots.filter(s => s.dayOfWeek === scope.row.dayOfWeekNum)">
                 <el-button 
                   :key="slot.id"  
