@@ -61,8 +61,7 @@
         <el-table-column prop="id" label="教练ID" width="80" align="center"></el-table-column>
         <el-table-column prop="name" label="姓名" min-width="100"></el-table-column>
         <el-table-column prop="isMale" label="性别" width="80" align="center">
-        <!-- 调整：true → 男，false → 女 -->
-        <template #default="scope">{{ scope.row.isMale ? '男' : '女' }}</template>
+          <template #default="scope">{{ scope.row.isMale ? '男' : '女' }}</template>
         </el-table-column>
         <el-table-column prop="age" label="年龄" width="80" align="center"></el-table-column>
         <el-table-column prop="level" label="等级" width="100" align="center">
@@ -74,7 +73,7 @@
         </el-table-column>
         <el-table-column prop="phone" label="联系电话" min-width="130"></el-table-column>
         <el-table-column label="所属校区" min-width="150">
-        <template #default="scope">{{ getSchoolName(scope.row.schoolId) }}</template>
+          <template #default="scope">{{ getSchoolName(scope.row.schoolId) }}</template>
         </el-table-column>
         
         <el-table-column label="操作" width="150" align="center">
@@ -109,28 +108,32 @@
       :visible.sync="editDialogVisible"
       width="500px"
     >
+      <!-- 添加表单验证规则绑定 -->
       <el-form
         :model="formData"
         ref="form"
         label-width="100px"
+        :rules="formRules"
       >
-        <el-form-item label="姓名" prop="name" :rules="{ required: true, message: '请输入姓名', trigger: 'blur' }">
+        <el-form-item label="姓名" prop="name">
           <el-input v-model="formData.name"></el-input>
         </el-form-item>
         <el-form-item label="性别">
-        <el-radio-group v-model="formData.isMale"> <!-- 绑定formData.male（boolean） -->
-            <el-radio :label="true">男</el-radio>   <!-- label为true -->
-            <el-radio :label="false">女</el-radio>  <!-- label为false -->
-        </el-radio-group>
+          <el-radio-group v-model="formData.isMale">
+            <el-radio :label="true">男</el-radio>
+            <el-radio :label="false">女</el-radio>
+          </el-radio-group>
         </el-form-item>
-        <el-form-item label="年龄" prop="age" :rules="{ type: 'number', min: 18, max: 60, message: '年龄在18-60之间', trigger: 'blur' }">
-          <el-input v-model.number="formData.age" type="number"></el-input>
+        <!-- 年龄字段带校验 -->
+        <el-form-item label="年龄" prop="age">
+          <el-input v-model.number="formData.age" type="number" placeholder="请输入18-60之间的年龄"></el-input>
         </el-form-item>
-        <el-form-item label="联系电话" prop="phone" :rules="{ required: true, message: '请输入电话', trigger: 'blur' }">
-          <el-input v-model="formData.phone"></el-input>
+        <!-- 电话字段带校验 -->
+        <el-form-item label="联系电话" prop="phone">
+          <el-input v-model="formData.phone" placeholder="请输入11位手机号码"></el-input>
         </el-form-item>
-        <el-form-item label="教练等级">
-          <el-select v-model="formData.level">
+        <el-form-item label="教练等级" prop="level">
+          <el-select v-model="formData.level" placeholder="请选择教练等级">
             <el-option label="初级教练" :value="10"></el-option>
             <el-option label="中级教练" :value="100"></el-option>
             <el-option label="高级教练" :value="1000"></el-option>
@@ -157,6 +160,33 @@ export default {
     ...mapGetters(['token', 'schoolId'])
   },
   data() {
+    // 年龄验证规则
+    const validateAge = (rule, value, callback) => {
+      if (!value && value !== 0) {
+        return callback(new Error('请输入年龄'))
+      }
+      if (!Number.isInteger(value)) {
+        return callback(new Error('年龄必须是整数'))
+      }
+      if (value < 18 || value > 60) {
+        return callback(new Error('年龄必须在18到60之间'))
+      }
+      callback()
+    }
+
+    // 手机号验证规则
+    const validatePhone = (rule, value, callback) => {
+      if (!value) {
+        return callback(new Error('请输入联系电话'))
+      }
+      // 手机号正则表达式
+      const phoneReg = /^1[3-9]\d{9}$/
+      if (!phoneReg.test(value)) {
+        return callback(new Error('请输入有效的11位手机号码'))
+      }
+      callback()
+    }
+
     return {
       coachList: [],
       schoolList: [],
@@ -175,7 +205,22 @@ export default {
       },
       editDialogVisible: false,
       formData: {
-        isMale: false // 显式声明，确保响应式
+        isMale: false
+      },
+      // 表单验证规则
+      formRules: {
+        name: [
+          { required: true, message: '请输入姓名', trigger: 'blur' }
+        ],
+        age: [
+          { validator: validateAge, trigger: ['blur', 'change'] }
+        ],
+        phone: [
+          { validator: validatePhone, trigger: ['blur', 'change'] }
+        ],
+        level: [
+          { required: true, message: '请选择教练等级', trigger: 'change' }
+        ]
       }
     }
   },
@@ -184,11 +229,9 @@ export default {
     this.fetchCoaches()
   },
   methods: {
-
-    // 根据schoolId获取校区名称
     getSchoolName(schoolId) {
-        const school = this.schoolList.find(item => item.id === schoolId)
-        return school ? school.schoolname : '未知校区'
+      const school = this.schoolList.find(item => item.id === schoolId)
+      return school ? school.schoolname : '未知校区'
     },
     formatTime(time) {
       if (!time) return ''
@@ -229,9 +272,9 @@ export default {
         const res = await getManagedCertifiedCoaches(params)
         this.coachList = res.data.content || []
         this.pagination = {
-          pageNum: res.data.current,
-          pageSize: res.data.size,
-          total: res.data.total
+          pageNum: res.data.pageable.pageNumber + 1,
+          pageSize: res.data.pageable.pageSize,
+          total: res.data.totalElements
         }
       } catch (err) {
         Message.error(err.message || '获取教练列表失败')
@@ -262,21 +305,29 @@ export default {
       this.fetchCoaches()
     },
     handleEdit(row) {
-      this.formData = { ...row,
-        // 关键：将字符串转为布尔值（若后端返回的是字符串）
-        isMale: row.isMale === 'true' || row.isMale === true,
-       }
+      this.formData = { 
+        ...row,
+        isMale: row.isMale === 'true' || row.isMale === true
+      }
       this.editDialogVisible = true
     },
     async submitEdit() {
-      try {
-        await updateCertifiedCoach(this.token, this.formData)
-        Message.success('更新成功')
-        this.editDialogVisible = false
-        this.fetchCoaches()
-      } catch (err) {
-        Message.error(err.message || '更新失败')
-      }
+      // 表单验证
+      this.$refs.form.validate(async (valid) => {
+        if (!valid) {
+          Message.warning('请检查输入的信息是否符合要求')
+          return
+        }
+
+        try {
+          await updateCertifiedCoach(this.token, this.formData)
+          Message.success('更新成功')
+          this.editDialogVisible = false
+          this.fetchCoaches()
+        } catch (err) {
+          Message.error(err.message || '更新失败')
+        }
+      })
     }
   }
 }

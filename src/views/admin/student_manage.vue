@@ -102,10 +102,10 @@
           <el-input v-model="formData.name"></el-input>
         </el-form-item>
         <el-form-item label="性别">
-          <el-radio-group v-model="formData.isMale">
-            <el-radio :label="1">男</el-radio>
-            <el-radio :label="0">女</el-radio>
-          </el-radio-group>
+          <el-radio-group v-model="formData.isMale"> <!-- 绑定formData.male（boolean） -->
+            <el-radio :label="true">男</el-radio>   <!-- label为true -->
+            <el-radio :label="false">女</el-radio>  <!-- label为false -->
+        </el-radio-group>
         </el-form-item>
         <el-form-item label="年龄" prop="age">
         <el-input v-model.number="formData.age" type="number" placeholder="请输入5-100之间的数字"></el-input>
@@ -234,9 +234,9 @@ export default {
         const res = await getManagedStudents(params)
         this.studentList = res.data.content || []
         this.pagination = {
-          pageNum: res.data.current,
-          pageSize: res.data.size,
-          total: res.data.total
+          pageNum: res.data.pageable.pageNumber + 1,
+          pageSize: res.data.pageable.pageSize,
+          total: res.data.totalElements
         }
       } catch (err) {
         Message.error(err.message || '获取学生列表失败')
