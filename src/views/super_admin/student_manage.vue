@@ -6,6 +6,7 @@
     </div>
 
     <el-card>
+      <!-- 搜索区域保持不变 -->
       <div class="search-bar">
         <el-input
           v-model="searchParams.name"
@@ -41,6 +42,7 @@
         </el-button>
       </div>
 
+      <!-- 表格区域保持不变 -->
       <el-table
         :data="studentList"
         border
@@ -71,6 +73,7 @@
         </el-table-column>
       </el-table>
 
+      <!-- 分页区域保持不变 -->
       <div class="pagination" style="margin-top: 15px; text-align: right">
         <el-pagination
           @size-change="handleSizeChange"
@@ -84,18 +87,20 @@
       </div>
     </el-card>
 
-    <!-- 编辑弹窗 -->
+    <!-- 编辑弹窗：关键修复在这里 -->
     <el-dialog
       title="编辑学生信息"
       :visible.sync="editDialogVisible"
       width="500px"
     >
+      <!-- 1. 关键修复：添加 :rules="formRules" 绑定验证规则 -->
       <el-form
         :model="formData"
         ref="form"
         label-width="100px"
+        :rules="formRules" 
       >
-        <el-form-item label="姓名" prop="name" :rules="{ required: true, message: '请输入姓名', trigger: 'blur' }">
+        <el-form-item label="姓名" prop="name">
           <el-input v-model="formData.name"></el-input>
         </el-form-item>
         <el-form-item label="性别">
@@ -104,13 +109,15 @@
             <el-radio :label="false">女</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="年龄" prop="age" :rules="{ type: 'number', min: 5, max: 100, message: '年龄在5-100之间', trigger: 'blur' }">
-          <el-input v-model.number="formData.age" type="number"></el-input>
+        <!-- 2. 年龄字段：保持prop正确 -->
+        <el-form-item label="年龄" prop="age">
+          <el-input v-model.number="formData.age" type="number" placeholder="请输入5-100之间的数字"></el-input>
         </el-form-item>
-        <el-form-item label="联系电话" prop="phone" :rules="{ required: true, message: '请输入电话', trigger: 'blur' }">
-          <el-input v-model="formData.phone"></el-input>
+        <!-- 3. 电话字段：保持prop正确 -->
+        <el-form-item label="联系电话" prop="phone">
+          <el-input v-model="formData.phone" placeholder="请输入11位手机号"></el-input>
         </el-form-item>
-        <el-form-item label="所属校区">
+        <el-form-item label="所属校区" prop="schoolId">  <!-- 补充：校区也可添加必填验证 -->
           <el-select v-model="formData.schoolId" placeholder="选择校区">
             <el-option
               v-for="school in schoolList"
@@ -140,6 +147,41 @@ export default {
     ...mapGetters(['token'])
   },
   data() {
+    // 年龄验证函数
+    const validateAge = (rule, value, callback) => {
+      if (value === null || value === undefined || value === '') {
+        return callback(new Error('请输入年龄'));
+      }
+      if (isNaN(Number(value))) {
+        return callback(new Error('年龄必须为数字'));
+      }
+      const numValue = Number(value);
+      if (numValue < 5 || numValue > 100) {
+        return callback(new Error('年龄必须在5-100之间'));
+      }
+      callback();
+    };
+
+    // 电话验证函数
+    const validatePhone = (rule, value, callback) => {
+      if (!value) {
+        return callback(new Error('请输入联系电话'));
+      }
+      const phoneReg = /^1[3-9]\d{9}$/;
+      if (!phoneReg.test(value)) {
+        return callback(new Error('请输入合法的11位手机号'));
+      }
+      callback();
+    };
+
+    // 校区必填验证（可选）
+    const validateSchool = (rule, value, callback) => {
+      if (!value) {
+        return callback(new Error('请选择所属校区'));
+      }
+      callback();
+    };
+
     return {
       studentList: [],
       schoolList: [],
@@ -153,11 +195,28 @@ export default {
       pagination: {
         pageNum: 1,
         pageSize: 10,
-        total: 0
+        totalPages: 0
       },
       editDialogVisible: false,
       formData: {
         isMale: true
+      },
+      // 验证规则（与el-form的:rules绑定）
+      formRules: {
+        name: [
+          { required: true, message: '请输入姓名', trigger: 'blur' }
+        ],
+        age: [
+          { required: true, message: '请输入年龄', trigger: 'blur' },
+          { validator: validateAge, trigger: ['blur', 'change'] }  // 优化：change时也触发验证
+        ],
+        phone: [
+          { required: true, message: '请输入联系电话', trigger: 'blur' },
+          { validator: validatePhone, trigger: ['blur', 'change'] }  // 优化：change时也触发验证
+        ],
+        schoolId: [
+          { validator: validateSchool, trigger: 'change' }  // 可选：添加校区必填验证
+        ]
       }
     }
   },
@@ -166,7 +225,6 @@ export default {
     this.fetchStudents()
   },
   methods: {
-    // 根据schoolId获取校区名称
     getSchoolName(schoolId) {
       const school = this.schoolList.find(item => item.id === schoolId)
       return school ? school.schoolname : '未知校区'
@@ -189,9 +247,9 @@ export default {
         const res = await getAllStudents(params)
         this.studentList = res.data.content || []
         this.pagination = {
-          pageNum: res.data.current,
-          pageSize: res.data.size,
-          total: res.data.total
+          pageNum: res.data.pageable.pageNumber + 1,
+          pageSize: res.data.pageable.pageSize,
+          total: res.data.totalElements
         }
       } catch (err) {
         Message.error(err.message || '获取学生列表失败')
@@ -225,14 +283,23 @@ export default {
       this.editDialogVisible = true
     },
     async submitEdit() {
-      try {
-        await updateStudent(this.token, this.formData)
-        Message.success('更新成功')
-        this.editDialogVisible = false
-        this.fetchStudents()
-      } catch (err) {
-        Message.error(err.message || '更新失败')
-      }
+      // 触发表单验证
+      this.$refs.form.validate(async (isValid) => {
+        if (!isValid) {
+          Message.warning('请检查输入的信息是否合法！');
+          return;
+        }
+
+        // 验证通过后提交
+        try {
+          await updateStudent(this.token, this.formData);
+          Message.success('更新成功');
+          this.editDialogVisible = false;
+          this.fetchStudents();
+        } catch (err) {
+          Message.error(err.message || '更新失败');
+        }
+      });
     }
   }
 }

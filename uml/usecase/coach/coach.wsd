@@ -1,0 +1,75 @@
+@startuml 教练员功能用例图
+left to right direction
+
+' 定义参与者
+actor 教练员
+
+' 基础系统操作（注册、登录、登出）
+usecase "注册系统" as UC00
+usecase "登录系统" as UC01
+usecase "登出系统" as UC02
+
+' 个人信息管理
+usecase "维护个人信息" as UC1
+
+' 学生广场模块
+package "学生广场" {
+  usecase "审核学生" as UC2_1
+  usecase "查看我的学生信息" as UC2_2
+  usecase "处理更换教练申请" as UC2_3
+}
+
+' 预约管理模块
+package "预约管理" {
+  usecase "同意或拒绝学员预约" as UC3_1
+  usecase "查看一周课表" as UC3_2
+  usecase "取消预约" as UC3_3
+  usecase "处理学生取消预约" as UC3_4
+}
+
+' 课程评价模块
+package "课程评价" {
+  usecase "查看我的评价和收到的评价" as UC4_1
+  usecase "新增评价" as UC4_2
+  usecase "编辑我的评价" as UC4_3
+  usecase "删除我的评价" as UC4_4
+}
+
+' 账号管理模块
+package "账号管理" {
+  usecase "查看交易记录" as UC5_1
+  usecase "查看余额" as UC5_2
+  usecase "提现余额" as UC5_3
+}
+
+' 新增：通知模块（与教练员相关的三类通知）
+package "通知" {
+  usecase "更换教练通知" as UC6_1
+  usecase "上课提醒" as UC6_2
+  usecase "评课提醒" as UC6_3
+}
+
+' 建立参与者与所有用例的关联
+教练员 --> UC00  
+教练员 --> UC01  
+教练员 --> UC02 
+教练员 --> UC1   
+教练员 --> UC2_1  
+教练员 --> UC2_2  
+教练员 --> UC2_3  
+教练员 --> UC3_1  
+教练员 --> UC3_2  
+教练员 --> UC3_3  
+教练员 --> UC3_4  
+教练员 --> UC4_1  
+教练员 --> UC4_2  
+教练员 --> UC4_3  
+教练员 --> UC4_4  
+教练员 --> UC5_1  
+教练员 --> UC5_2  
+教练员 --> UC5_3  
+教练员 --> UC6_1  
+教练员 --> UC6_2  
+教练员 --> UC6_3  
+
+@enduml

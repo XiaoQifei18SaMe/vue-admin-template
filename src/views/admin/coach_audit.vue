@@ -32,7 +32,7 @@
         label="性别"
         align="center"
       >
-        <template slot-scope="scope">{{ scope.row.male ? '男' : '女' }}</template>
+        <template slot-scope="scope">{{ scope.row.isMale ? '男' : '女' }}</template>
       </el-table-column>
       <el-table-column
         prop="age"
@@ -90,7 +90,7 @@
                 </div>
                 <div class="detail-item">
                   <span class="item-label">性别</span>
-                  <span class="item-value">{{ currentCoach.male ? '男' : '女' }}</span>
+                  <span class="item-value">{{ currentCoach.isMale ? '男' : '女' }}</span>
                 </div>
                 <div class="detail-item">
                   <span class="item-label">年龄</span>
@@ -250,7 +250,10 @@ export default {
           );
         }
         
-        this.$message.success("审核操作成功");
+        if(isAccepted)
+          this.$message.success("审核通过成功");
+        else
+          this.$message.success("审核拒绝成功")
         this.showDetail = false;
         
         // 本地移除已审核教练

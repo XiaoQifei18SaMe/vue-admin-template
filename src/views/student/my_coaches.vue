@@ -42,7 +42,7 @@
       <el-button 
         type="primary" 
         style="margin-top: 15px;"
-        @click="$router.push('/student/coach_select')"
+        @click="$router.push('/coach_select')"
       >
         去申请教练
       </el-button>

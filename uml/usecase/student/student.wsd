@@ -1,0 +1,89 @@
+@startuml 学员功能用例图
+left to right direction
+
+' 定义参与者
+actor 学员
+
+' 基础系统操作（新增注册功能，作为登录前的前置操作）
+usecase "注册系统" as UC00  
+usecase "登录系统" as UC01
+usecase "登出系统" as UC02
+
+' 个人信息管理
+usecase "维护个人信息" as UC1
+
+' 教练广场模块
+package "教练广场" {
+  package "选择教练" {
+    usecase "查询教练" as UC2_1_1
+    usecase "查看教练详情" as UC2_1_2
+    usecase "选择教练" as UC2_1_3
+  }
+  usecase "我的教练" as UC2_2
+  usecase "更换教练" as UC2_3
+}
+
+' 账户充值模块
+package "账户充值" {
+  usecase "查看余额" as UC3_1
+  usecase "充值" as UC3_2
+  usecase "查看交易记录" as UC3_3
+}
+
+' 课程预约模块
+package "课程预约" {
+  usecase "查看课表" as UC4_1
+  usecase "进行预约" as UC4_2
+  usecase "取消预约" as UC4_3
+  usecase "处理教练取消预约申请" as UC4_4
+}
+
+' 评论课程模块
+package "评论课程" {
+  usecase "查看我的评价和收到的评价" as UC5_1
+  usecase "创建评价" as UC5_2
+  usecase "编辑我的评价" as UC5_3
+  usecase "删除我的评价" as UC5_4
+}
+
+' 乒乓月赛模块
+package "乒乓月赛" {
+  usecase "报名参赛" as UC6_1
+  usecase "查看赛程" as UC6_2
+}
+
+' 通知模块
+package "通知" {
+  usecase "更换教练通知" as UC7_1
+  usecase "上课提醒" as UC7_2
+  usecase "评课提醒" as UC7_3
+}
+
+' 建立参与者与用例的关联（注册放在最前面，体现流程顺序）
+学员 --> UC00  
+学员 --> UC01  
+学员 --> UC02  
+学员 --> UC1
+学员 --> UC2_1_1
+学员 --> UC2_1_2
+学员 --> UC2_1_3
+学员 --> UC2_2
+学员 --> UC2_3
+学员 --> UC3_1
+学员 --> UC3_2
+学员 --> UC3_3
+学员 --> UC4_1
+学员 --> UC4_2
+学员 --> UC4_3
+学员 --> UC4_4
+学员 --> UC5_1
+学员 --> UC5_2
+学员 --> UC5_3
+学员 --> UC5_4
+学员 --> UC6_1
+学员 --> UC6_2
+学员 --> UC7_1
+学员 --> UC7_2
+学员 --> UC7_3
+
+@enduml

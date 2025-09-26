@@ -1,0 +1,254 @@
+@startuml
+
+' 设置样式
+skinparam monochrome true
+skinparam classAttributeIconSize 0
+skinparam roundCorner 5
+
+' 实体类 (Entity)
+package "entity" {
+    class SchoolEntity {
+        - id: Long
+        - schoolname: String
+        - address: String
+        - name: String
+        - phone: String
+        - email: String
+        - adminId: Long
+        - table_num: int
+        - version: Integer
+    }
+    
+    class TableEntity {
+        - id: Long
+        - schoolId: Long
+        - isOccupied: boolean
+        - version: Integer
+    }
+    
+    class StudentEntity {
+        - id: Long
+        - username: String
+        - password: String
+        - name: String
+        - isMale: boolean
+        - age: Integer
+        - schoolId: Long
+        - phone: String
+        - email: String
+        - avatar: String
+        - version: Integer
+    }
+    
+    class CoachEntity {
+        - id: Long
+        - username: String
+        - password: String
+        - name: String
+        - isMale: boolean
+        - age: Integer
+        - schoolId: Long
+        - phone: String
+        - email: String
+        - level: Integer
+        - description: String
+        - photoPath: String
+        - isCertified: boolean
+        - version: Integer
+    }
+    
+    class CoachTeachStudentEntity {
+        - id: Long
+        - coachId: Long
+        - studentId: Long
+        - isConfirmed: boolean
+        - version: Integer
+    }
+    
+    class ScheduleEntity {
+        - id: Long
+        - schoolId: Long
+        - dayOfWeek: Integer
+        - startTime: LocalTime
+        - endTime: LocalTime
+        - description: String
+        - version: Integer
+    }
+    
+    class MatchGroupEntity {
+        - id: Long
+        - monthlyMatchId: Long
+        - groupType: GroupType
+        - subgroupNumber: Integer
+        - size: Integer
+    }
+    
+    class MatchScheduleEntity {
+        - id: Long
+        - monthlyMatchId: Long
+        - groupId: Long
+        - roundNumber: Integer
+        - player1Id: Long
+        - player2Id: Long
+        - tableId: Long
+        - startTime: LocalDateTime
+        - result: MatchResult
+    }
+    
+    class SystemActivation {
+        - id: Long
+        - secretKey: String
+        - deviceId: String
+        - validFrom: LocalDateTime
+        - validTo: LocalDateTime
+        - isActive: boolean
+        - superAdminId: Long
+    }
+    
+    class testEntity {
+        - id: Long
+        - name: String
+        - email: String
+    }
+}
+
+' 数据访问层 (Repository)
+package "repository" {
+    interface TableRepository {
+        + findAllBySchoolId(schoolId: Long): List<TableEntity>
+    }
+    
+    interface StudentRepository {
+        + findByUsername(name: String): StudentEntity
+        + findBySchoolId(schoolId: Long): List<StudentEntity>
+    }
+    
+    interface CoachRepository {
+        + findByUsername(name: String): CoachEntity
+        + findBySchoolId(schoolId: Long): List<CoachEntity>
+    }
+    
+    interface SchoolRepository {
+        + findBySchoolname(name: String): SchoolEntity
+        + findByAdminId(adminId: Long): List<SchoolEntity>
+    }
+    
+    interface CoachTeachStudentRepository {
+        + countByCoachId(coachId: Long): int
+        + countByStudentId(studentId: Long): int
+        + findByCoachIdAndStudentId(coachId, studentId): Optional<...>
+    }
+    
+    interface ScheduleRepository {
+        + findBySchoolId(schoolId: Long): List<ScheduleEntity>
+        + deleteBySchoolId(schoolId: Long): void
+    }
+    
+    interface MatchGroupRepository
+    interface MatchScheduleRepository
+    interface TestRepository
+}
+
+' 服务层 (Service)
+package "service" {
+    class StudentService {
+        + save(student: StudentEntity): Result<String>
+        + login(username, password): Result<String>
+        + revise(student: StudentEntity): Result<StudentEntity>
+        + selectCoach(coachId, studentId): Result<...>
+    }
+    
+    class TableService {
+        + getAllTables(): Result<List<TableEntity>>
+        + getTablesBySchoolId(schoolId): Result<List<TableEntity>>
+    }
+    
+    class CoachService
+    class CommonService
+    class TestService
+}
+
+' 控制层 (Controller)
+package "controller" {
+    class StudentController {
+        + createUser(studentEntity): Result<String>
+        + login(request): Result<String>
+        + updateInfo(studentEntity): Result<StudentEntity>
+    }
+    
+    class TableController {
+        + getAllTables(): Result<List<TableEntity>>
+        + getTablesBySchoolId(schoolId): Result<List<TableEntity>>
+    }
+    
+    class CommonController
+    class UploadController
+    class testController
+}
+
+' 工具类 (Utility)
+package "utility" {
+    class Result<T> {
+        - code: int
+        - message: String
+        - data: T
+        + success(data): Result<T>
+        + error(code, message): Result<T>
+    }
+    
+    class StatusCode {
+        + SUCCESS = 20000
+        + USERNAME_NOT_FOUND = 401
+        + PASSWORD_ERROR = 402
+    }
+    
+    class Utility {
+        + CoachPhotoPath: String
+        + AvatarPath: String
+    }
+    
+    class FileUploadUtil
+}
+
+' DTO类
+package "dto" {
+    class SchoolDTO
+    class CoachStudentDTO
+}
+
+' 关系定义
+' 实体间关系
+TableEntity -- SchoolEntity: belongs to (schoolId)
+StudentEntity -- SchoolEntity: belongs to (schoolId)
+CoachEntity -- SchoolEntity: belongs to (schoolId)
+ScheduleEntity -- SchoolEntity: belongs to (schoolId)
+
+CoachTeachStudentEntity -- CoachEntity: references (coachId)
+CoachTeachStudentEntity -- StudentEntity: references (studentId)
+
+MatchScheduleEntity -- TableEntity: uses (tableId)
+MatchScheduleEntity -- MatchGroupEntity: belongs to (groupId)
+
+' 服务与仓库关系
+StudentService -- StudentRepository: uses
+StudentService -- CoachRepository: uses
+StudentService -- CoachTeachStudentRepository: uses
+
+TableService -- TableRepository: uses
+
+' 控制器与服务关系
+StudentController -- StudentService: uses
+StudentController -- CoachService: uses
+TableController -- TableService: uses
+testController -- TestService: uses
+
+' 其他关系
+UploadController -- Utility: uses
+UploadController -- FileUploadUtil: uses
+
+Repository <|-- TableRepository
+Repository <|-- StudentRepository
+Repository <|-- CoachRepository
+Repository <|-- SchoolRepository
+
+@enduml

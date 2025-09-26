@@ -7,6 +7,7 @@
 
     <el-card>
       <div class="search-bar">
+        <!-- 搜索区域保持不变 -->
         <el-input
           v-model="searchParams.name"
           placeholder="请输入教练姓名"
@@ -58,6 +59,7 @@
         :loading="loading"
         style="width: 100%; margin-top: 15px"
       >
+        <!-- 表格列保持不变 -->
         <el-table-column prop="id" label="教练ID" width="80" align="center"></el-table-column>
         <el-table-column prop="name" label="姓名" min-width="100"></el-table-column>
         <el-table-column prop="isMale" label="性别" width="80" align="center">
@@ -75,7 +77,6 @@
         <el-table-column label="所属校区" min-width="150">
           <template #default="scope">{{ getSchoolName(scope.row.schoolId) }}</template>
         </el-table-column>
-        
         <el-table-column label="操作" width="150" align="center">
           <template #default="scope">
             <el-button
@@ -102,18 +103,20 @@
       </div>
     </el-card>
 
-    <!-- 编辑弹窗 -->
+    <!-- 编辑弹窗：关键修复区域 -->
     <el-dialog
       title="编辑教练信息"
       :visible.sync="editDialogVisible"
       width="500px"
     >
+      <!-- 1. 添加表单规则绑定 :rules="formRules" -->
       <el-form
         :model="formData"
         ref="form"
         label-width="100px"
+        :rules="formRules"
       >
-        <el-form-item label="姓名" prop="name" :rules="{ required: true, message: '请输入姓名', trigger: 'blur' }">
+        <el-form-item label="姓名" prop="name">
           <el-input v-model="formData.name"></el-input>
         </el-form-item>
         <el-form-item label="性别">
@@ -122,21 +125,25 @@
             <el-radio :label="false">女</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="年龄" prop="age" :rules="{ type: 'number', min: 18, max: 60, message: '年龄在18-60之间', trigger: 'blur' }">
-          <el-input v-model.number="formData.age" type="number"></el-input>
+        <!-- 2. 年龄字段：绑定prop并使用验证规则 -->
+        <el-form-item label="年龄" prop="age">
+          <el-input v-model.number="formData.age" type="number" placeholder="请输入18-60之间的数字"></el-input>
         </el-form-item>
-        <el-form-item label="联系电话" prop="phone" :rules="{ required: true, message: '请输入电话', trigger: 'blur' }">
-          <el-input v-model="formData.phone"></el-input>
+        <!-- 3. 电话字段：绑定prop并使用验证规则 -->
+        <el-form-item label="联系电话" prop="phone">
+          <el-input v-model="formData.phone" placeholder="请输入11位手机号"></el-input>
         </el-form-item>
-        <el-form-item label="教练等级">
-          <el-select v-model="formData.level">
+        <!-- 4. 教练等级：确保绑定正确 -->
+        <el-form-item label="教练等级" prop="level">
+          <el-select v-model="formData.level" placeholder="选择等级">
             <el-option label="初级教练" :value="10"></el-option>
             <el-option label="中级教练" :value="100"></el-option>
             <el-option label="高级教练" :value="1000"></el-option>
           </el-select>
         </el-form-item>
-        <el-form-item label="所属校区">
-          <el-select v-model="formData.schoolId" placeholder="选择校区">
+        <!-- 5. 所属校区：修复绑定，确保选择后更新formData.schoolId -->
+        <el-form-item label="所属校区" prop="schoolId">
+          <el-select v-model="formData.schoolId" placeholder="选择校区" @change="handleSchoolChange">
             <el-option
               v-for="school in schoolList"
               :key="school.id"
@@ -165,6 +172,49 @@ export default {
     ...mapGetters(['token'])
   },
   data() {
+    // 1. 年龄验证函数（18-60岁）
+    const validateAge = (rule, value, callback) => {
+      if (value === null || value === undefined || value === '') {
+        return callback(new Error('请输入年龄'));
+      }
+      if (isNaN(Number(value))) {
+        return callback(new Error('年龄必须为数字'));
+      }
+      const numValue = Number(value);
+      if (numValue < 18 || numValue > 60) {
+        return callback(new Error('年龄必须在18-60之间'));
+      }
+      callback();
+    };
+
+    // 2. 电话验证函数（11位手机号）
+    const validatePhone = (rule, value, callback) => {
+      if (!value) {
+        return callback(new Error('请输入联系电话'));
+      }
+      const phoneReg = /^1[3-9]\d{9}$/;
+      if (!phoneReg.test(value)) {
+        return callback(new Error('请输入合法的11位手机号'));
+      }
+      callback();
+    };
+
+    // 3. 校区选择验证（必填）
+    const validateSchool = (rule, value, callback) => {
+      if (!value) {
+        return callback(new Error('请选择所属校区'));
+      }
+      callback();
+    };
+
+    // 4. 教练等级验证（必填）
+    const validateLevel = (rule, value, callback) => {
+      if (value === undefined || value === null) {
+        return callback(new Error('请选择教练等级'));
+      }
+      callback();
+    };
+
     return {
       coachList: [],
       schoolList: [],
@@ -183,7 +233,29 @@ export default {
       },
       editDialogVisible: false,
       formData: {
-        isMale: true
+        isMale: true,
+        schoolId: null, // 初始化校区ID为null，避免未选择时的默认值问题
+        level: null     // 初始化等级为null
+      },
+      // 表单验证规则
+      formRules: {
+        name: [
+          { required: true, message: '请输入姓名', trigger: 'blur' }
+        ],
+        age: [
+          { required: true, message: '请输入年龄', trigger: 'blur' },
+          { validator: validateAge, trigger: ['blur', 'change'] }
+        ],
+        phone: [
+          { required: true, message: '请输入联系电话', trigger: 'blur' },
+          { validator: validatePhone, trigger: ['blur', 'change'] }
+        ],
+        level: [
+          { validator: validateLevel, trigger: 'change' }
+        ],
+        schoolId: [
+          { validator: validateSchool, trigger: 'change' }
+        ]
       }
     }
   },
@@ -192,7 +264,7 @@ export default {
     this.fetchCoaches()
   },
   methods: {
-    // 根据schoolId获取校区名称
+    // 辅助方法：获取校区名称、等级文本和样式（保持不变）
     getSchoolName(schoolId) {
       const school = this.schoolList.find(item => item.id === schoolId)
       return school ? school.schoolname : '未知校区'
@@ -213,6 +285,15 @@ export default {
         default: return 'default'
       }
     },
+
+    // 校区变更时的回调（可选，用于调试或额外逻辑）
+    handleSchoolChange(schoolId) {
+      // 确认校区ID已更新（可删除，仅用于验证）
+      this.formData.schoolId = schoolId;
+      console.log('当前选择的校区ID：', this.formData.schoolId);
+    },
+
+    // 数据获取方法（保持不变）
     async fetchSchools() {
       try {
         const res = await getSchools()
@@ -231,9 +312,9 @@ export default {
         const res = await getAllCertifiedCoaches(params)
         this.coachList = res.data.content || []
         this.pagination = {
-          pageNum: res.data.current,
-          pageSize: res.data.size,
-          total: res.data.total
+          pageNum: res.data.pageable.pageNumber + 1,
+          pageSize: res.data.pageable.pageSize,
+          total: res.data.totalElements
         }
       } catch (err) {
         Message.error(err.message || '获取教练列表失败')
@@ -241,6 +322,8 @@ export default {
         this.loading = false
       }
     },
+
+    // 搜索和分页方法（保持不变）
     handleSearch() {
       this.searchParams.pageNum = 1
       this.fetchCoaches()
@@ -263,19 +346,40 @@ export default {
       this.searchParams.pageNum = page
       this.fetchCoaches()
     },
+
+    // 编辑方法：确保初始化正确的校区ID
     handleEdit(row) {
-      this.formData = { ...row }
+      // 深拷贝避免引用问题，确保校区ID正确初始化
+      this.formData = { ...row };
+      // 处理可能的空值问题
+      if (this.formData.schoolId === undefined) {
+        this.formData.schoolId = null;
+      }
       this.editDialogVisible = true
     },
+
+    // 提交方法：添加表单验证
     async submitEdit() {
-      try {
-        await updateCertifiedCoach(this.token, this.formData)
-        Message.success('更新成功')
-        this.editDialogVisible = false
-        this.fetchCoaches()
-      } catch (err) {
-        Message.error(err.message || '更新失败')
-      }
+      // 触发表单验证
+      this.$refs.form.validate(async (isValid) => {
+        if (!isValid) {
+          Message.warning('请检查输入的信息是否合法！');
+          return; // 验证失败，阻断提交
+        }
+
+        // 验证通过，提交数据
+        try {
+          // 确认提交的schoolId是最新值（可删除，仅用于调试）
+          // console.log('提交的校区ID：', this.formData.schoolId);
+          
+          await updateCertifiedCoach(this.token, this.formData)
+          Message.success('更新成功')
+          this.editDialogVisible = false
+          this.fetchCoaches()
+        } catch (err) {
+          Message.error(err.message || '更新失败')
+        }
+      });
     }
   }
 }
@@ -288,3 +392,4 @@ export default {
   margin-bottom: 15px;
 }
 </style>
+    

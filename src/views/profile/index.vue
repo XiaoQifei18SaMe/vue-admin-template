@@ -519,8 +519,12 @@ export default {
         if (valid) {
           this.submitLoading = true
           try {
-            const submitData = { ...this.userInfo }
+            const submitData = { 
+              ...this.userInfo,
+              isMale: this.userInfo.male
+            }
             delete submitData.confirmPassword
+            delete submitData.male
             
             // 获取当前用户角色
             const currentRole = this.currentUser.role

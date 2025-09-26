@@ -1,0 +1,24 @@
+@startuml 完整定时任务用例图
+left to right direction
+
+' 参与者：时间（触发所有定时任务）
+actor 时间
+
+' 比赛管理相关定时用例
+package "比赛管理" {
+  usecase "自动创建月赛" as UC9_1
+  usecase "自动安排赛程" as UC9_2
+}
+
+' 课程管理相关定时用例
+package "课程管理" {
+  usecase "发送课程提醒（课前1小时）" as UC10_1
+  usecase "处理已结束课程并发送评价通知" as UC10_2
+}
+
+' 时间与所有定时用例的关联
+时间 --> UC9_1
+时间 --> UC9_2
+时间 --> UC10_1
+时间 --> UC10_2
+@enduml

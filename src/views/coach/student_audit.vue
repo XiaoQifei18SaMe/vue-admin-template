@@ -15,7 +15,7 @@
     >
       <el-table-column prop="student.name" label="学员姓名" align="center"></el-table-column>
       <el-table-column label="学员性别" align="center">
-        <template #default="scope">{{ scope.row.student.male ? '男' : '女' }}</template>
+        <template #default="scope">{{ scope.row.student.isMale ? '男' : '女' }}</template>
       </el-table-column>
       <el-table-column prop="student.age" label="学员年龄" align="center"></el-table-column>
       <el-table-column label="操作" align="center" width="200">
@@ -66,7 +66,7 @@
                 </div>
                 <div class="detail-item">
                   <span class="item-label">性别</span>
-                  <span class="item-value">{{ currentStudent.male ? '男' : '女' }}</span>
+                  <span class="item-value">{{ currentStudent.isMale ? '男' : '女' }}</span>
                 </div>
                 <div class="detail-item">
                   <span class="item-label">年龄</span>

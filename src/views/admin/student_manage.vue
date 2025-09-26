@@ -96,6 +96,7 @@
         :model="formData"
         ref="form"
         label-width="100px"
+        :rules="formRules"
       >
         <el-form-item label="姓名" prop="name" :rules="{ required: true, message: '请输入姓名', trigger: 'blur' }">
           <el-input v-model="formData.name"></el-input>
@@ -106,12 +107,14 @@
             <el-radio :label="0">女</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="年龄" prop="age" :rules="{ type: 'number', min: 5, max: 100, message: '年龄在5-100之间', trigger: 'blur' }">
-          <el-input v-model.number="formData.age" type="number"></el-input>
-        </el-form-item>
-        <el-form-item label="联系电话" prop="phone" :rules="{ required: true, message: '请输入电话', trigger: 'blur' }">
-          <el-input v-model="formData.phone"></el-input>
-        </el-form-item>
+        <el-form-item label="年龄" prop="age">
+        <el-input v-model.number="formData.age" type="number" placeholder="请输入5-100之间的数字"></el-input>
+      </el-form-item>
+
+      <!-- 电话字段：新增格式验证，仅允许11位手机号 -->
+      <el-form-item label="联系电话" prop="phone">
+        <el-input v-model="formData.phone" placeholder="请输入11位手机号"></el-input>
+      </el-form-item>
       </el-form>
       <div slot="footer">
         <el-button @click="editDialogVisible = false">取消</el-button>
@@ -133,6 +136,38 @@ export default {
     ...mapGetters(['token', 'schoolId'])
   },
   data() {
+    const validateAge = (rule, value, callback) => {
+      // 1. 校验是否为空/未定义
+      if (value === null || value === undefined || value === '') {
+        return callback(new Error('请输入年龄'));
+      }
+      // 2. 校验是否为有效数字（避免字符串如"18a"）
+      if (isNaN(Number(value))) {
+        return callback(new Error('年龄必须为数字'));
+      }
+      // 3. 校验范围（5-100，阻断负数、0、超100）
+      const numValue = Number(value);
+      if (numValue < 5 || numValue > 100) {
+        return callback(new Error('年龄必须在5-100之间'));
+      }
+      // 验证通过
+      callback();
+    };
+
+    // 新增：电话格式验证（正则匹配国内11位手机号）
+    const validatePhone = (rule, value, callback) => {
+      // 1. 校验是否为空
+      if (!value) {
+        return callback(new Error('请输入联系电话'));
+      }
+      // 2. 校验是否为11位手机号（正则：以1开头，后续10位为数字）
+      const phoneReg = /^1[3-9]\d{9}$/;
+      if (!phoneReg.test(value)) {
+        return callback(new Error('请输入合法的11位手机号'));
+      }
+      // 验证通过
+      callback();
+    };
     return {
       studentList: [],
       schoolList: [],
@@ -149,7 +184,20 @@ export default {
         total: 0
       },
       editDialogVisible: false,
-      formData: {}
+      formData: {},
+      formRules: {
+        name: [
+          { required: true, message: '请输入姓名', trigger: 'blur' }
+        ],
+        age: [
+          { required: true, message: '请输入年龄', trigger: 'blur' },
+          { validator: validateAge, trigger: 'blur' } // 关联自定义年龄验证
+        ],
+        phone: [
+          { required: true, message: '请输入联系电话', trigger: 'blur' },
+          { validator: validatePhone, trigger: 'blur' } // 关联自定义电话验证
+        ]
+      }
     }
   },
   created() {
@@ -222,15 +270,25 @@ export default {
       this.editDialogVisible = true
     },
     async submitEdit() {
-      try {
-        await updateStudent(this.token, this.formData)
-        Message.success('更新成功')
-        this.editDialogVisible = false
-        this.fetchStudents()
-      } catch (err) {
-        Message.error(err.message || '更新失败')
+      // 关键：调用Element UI的表单验证，所有字段通过才进入提交逻辑
+      this.$refs.form.validate(async (isValid) => {
+        if (!isValid) {
+          // 验证失败：提示用户并阻断提交
+          Message.warning('请检查年龄或电话是否填写合法！');
+          return; // 直接返回，不执行后续提交
+        }
+
+        // 验证通过：执行接口提交
+        try {
+          await updateStudent(this.token, this.formData);
+          Message.success('更新成功');
+          this.editDialogVisible = false;
+          this.fetchStudents(); // 重新拉取列表
+        } catch (err) {
+          Message.error(err.message || '更新失败');
+        }
+      });
       }
-    }
   }
 }
 </script>

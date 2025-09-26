@@ -183,10 +183,10 @@ export default {
           { max: 20, message: '用户名最长20个字符', trigger: 'blur' }
         ],
         password: [
-          { trigger: 'blur', validator: validatePassword }
+          { required: true, trigger: 'blur', validator: validatePassword }
         ],
         confirmPassword: [
-          { trigger: 'blur', validator: validateConfirmPassword }
+          { required: true, trigger: 'blur', validator: validateConfirmPassword }
         ],
         name: [
           { required: true, message: '请输入姓名', trigger: 'blur' },
